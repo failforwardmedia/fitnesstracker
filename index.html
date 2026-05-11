@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nikki's Reboot" />
+  <title>Nikki's Reboot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; }
+    body { background: #4A5E4A; }
+    #root { min-height: 100%; }
+
+    @keyframes slideDown {
+      from { opacity:0; transform:translateX(-50%) translateY(-10px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-card { animation: fadeUp 0.35s ease both; }
+
+    .tab {
+      background: none; border: none; cursor: pointer;
+      font-family: 'Poppins', sans-serif; font-size: 11px;
+      letter-spacing: 2px; text-transform: uppercase;
+      padding: 12px 20px; color: #9AA89A;
+      border-bottom: 2px solid transparent; transition: all 0.2s; font-weight: 400;
+    }
+    .tab.active { color: #EEF0E8; border-bottom-color: rgba(238,240,232,0.5); }
+
+    input[type=number], input[type=text] {
+      background: #EAE5DC; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 10px; padding: 11px 14px; color: #1C201A;
+      font-family: 'Poppins', sans-serif; font-size: 14px;
+      width: 100%; outline: none; font-weight: 300;
+    }
+    input:focus { border-color: #3A5070; }
+    input::placeholder { color: #A8AFA0; }
+
+    .navy-btn {
+      background: #1E2D40; color: #fff; border: none; border-radius: 10px;
+      padding: 11px 22px; cursor: pointer; font-family: 'Poppins', sans-serif;
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      transition: background 0.2s; letter-spacing: 0.5px;
+    }
+    .navy-btn:hover { background: #2A3F58; }
+
+    .check-row {
+      display: flex; align-items: center; gap: 14px;
+      border-radius: 12px; padding: 14px 16px; width: 100%;
+      cursor: pointer; margin-bottom: 10px; text-align: left;
+      transition: all 0.3s ease; border: 1px solid rgba(160,148,128,0.3);
+    }
+    .check-row.done {
+      background: #1E2D40 !important;
+      border-color: #2A3F58 !important;
+      box-shadow: 0 2px 12px rgba(30,45,64,0.3);
+    }
+    .check-row.undone { background: #EAE5DC; }
+
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: #1E2D40; color: #fff; padding: 11px 26px;
+      border-radius: 40px; font-size: 13px; font-weight: 500;
+      z-index: 999; white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      animation: slideDown 0.2s ease;
+    }
+
+    .journal-card {
+      background: #F0EDE6; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 16px; padding: 20px; margin-bottom: 12px;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-card {
+      background: #F0EDE6; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 16px; padding: 18px 14px; text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const { useState, useEffect, useRef } = React;
+
+const STORAGE_KEYS = {
+  sugar: "wellness_sugar",
+  lifts: "wellness_lifts",
+  mindfulness: "wellness_mindfulness",
+  yoga: "wellness_yoga",
+  miles: "wellness_miles",
+  sugarStart: "wellness_sugar_start",
+};
+
+const MAY_END   = new Date("2026-05-31");
+const MAY_START = new Date("2026-05-01");
+
+function getToday() { return new Date().toISOString().split("T")[0]; }
+
+function getDayOfMay() {
+  const now = new Date();
+  const diff = Math.floor((now - MAY_START) / (1000*60*60*24)) + 1;
+  return Math.min(Math.max(diff, 1), 31);
+}
+function getRemainingMayDays() {
+  return Math.max(Math.ceil((MAY_END - new Date()) / (1000*60*60*24)), 0);
+}
+function safeGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+
+function IconNoSugar({ color, size }) {
+  color = color || "#1E2D40"; size = size || 22;
+  return React.createElement("svg", { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color, strokeWidth:"1.8", strokeLinecap:"round", strokeLinejoin:"round" },
+    React.createElement("rect", { x:"7", y:"8", width:"10", height:"8", rx:"1.5" }),
+    React.createElement("line", { x1:"7", y1:"12", x2:"17", y2:"12" }),
+    React.createElement("line", { x1:"12", y1:"8", x2:"12", y2:"16" }),
+    React.createElement("circle", { cx:"9.5", cy:"10.2", r:"0.6", fill:color, stroke:"none" }),
+    React.createElement("circle", { cx:"14.5", cy:"10.2", r:"0.6", fill:color, stroke:"none" }),
+    React.createElement("line", { x1:"4", y1:"4", x2:"20", y2:"20", strokeWidth:"2" })
+  );
+}
+
+function IconLift({ color, size }) {
+  color = color || "#1E2D40"; size = size || 22;
+  return React.createElement("svg", { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color, strokeWidth:"1.8", strokeLinecap:"round", strokeLinejoin:"round" },
+    React.createElement("line", { x1:"6", y1:"12", x2:"18", y2:"12" }),
+    React.createElement("rect", { x:"3", y:"9", width:"3", height:"6", rx:"1" }),
+    React.createElement("rect", { x:"18", y:"9", width:"3", height:"6", rx:"1" }),
+    React.createElement("line", { x1:"6", y1:"10.5", x2:"6", y2:"13.5", strokeWidth:"2.5" }),
+    React.createElement("line", { x1:"18", y1:"10.5", x2:"18", y2:"13.5", strokeWidth:"2.5" })
+  );
+}
+
+function IconMindfulness({ color, size }) {
+  color = color || "#1E2D40"; size = size || 22;
+  return React.createElement("svg", { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color, strokeWidth:"1.7", strokeLinecap:"round", strokeLinejoin:"round" },
+    React.createElement("path", { d:"M12 17 C12 17 9 14 9 11 C9 9 10.5 8 12 8 C13.5 8 15 9 15 11 C15 14 12 17 12 17Z" }),
+    React.createElement("path", { d:"M12 17 C12 17 8 15.5 7 12.5 C6.5 10.5 7.5 9 9 9.5" }),
+    React.createElement("path", { d:"M12 17 C12 17 16 15.5 17 12.5 C17.5 10.5 16.5 9 15 9.5" }),
+    React.createElement("path", { d:"M9 9.5 C7 8.5 5.5 9.5 5.5 11.5 C5.5 13.5 7.5 15 8.5 15.5" }),
+    React.createElement("path", { d:"M15 9.5 C17 8.5 18.5 9.5 18.5 11.5 C18.5 13.5 16.5 15 15.5 15.5" }),
+    React.createElement("path", { d:"M12 17 C12 18.5 11.5 19.5 11 20" }),
+    React.createElement("path", { d:"M12 17 C11 18 9.5 18.5 8.5 18" })
+  );
+}
+
+function IconMove({ color, size }) {
+  color = color || "#1E2D40"; size = size || 22;
+  return React.createElement("svg", { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:color, strokeWidth:"1.7", strokeLinecap:"round", strokeLinejoin:"round" },
+    React.createElement("circle", { cx:"12", cy:"4.5", r:"1.8" }),
+    React.createElement("line", { x1:"12", y1:"6.3", x2:"12", y2:"12" }),
+    React.createElement("path", { d:"M12 8.5 C10 8 7.5 7 6 8.5" }),
+    React.createElement("path", { d:"M12 8.5 C14 8 16.5 7 18 8.5" }),
+    React.createElement("path", { d:"M12 12 C10.5 13.5 8.5 14.5 7 14" }),
+    React.createElement("path", { d:"M12 12 C13.5 13.5 15.5 14.5 17 14" }),
+    React.createElement("path", { d:"M7 14 C6.5 15 7 16 8 15.5" }),
+    React.createElement("path", { d:"M17 14 C17.5 15 17 16 16 15.5" })
+  );
+}
+
+function Checkmark() {
+  return React.createElement("svg", { width:"18", height:"18", viewBox:"0 0 24 24", fill:"none", stroke:"#fff", strokeWidth:"2.5", strokeLinecap:"round", strokeLinejoin:"round" },
+    React.createElement("polyline", { points:"20 6 9 17 4 12" })
+  );
+}
+
+// ── Progress Ring ─────────────────────────────────────────────────────────────
+
+function ProgressRing({ pct, size, stroke, color, bg, children }) {
+  size = size || 80; stroke = stroke || 6;
+  color = color || "#1E2D40"; bg = bg || "rgba(30,45,64,0.1)";
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = circ * Math.min(pct, 1);
+  return React.createElement("div", { style:{ position:"relative", width:size, height:size } },
+    React.createElement("svg", { width:size, height:size, style:{ transform:"rotate(-90deg)" } },
+      React.createElement("circle", { cx:size/2, cy:size/2, r, fill:"none", stroke:bg, strokeWidth:stroke }),
+      React.createElement("circle", { cx:size/2, cy:size/2, r, fill:"none", stroke:color, strokeWidth:stroke,
+        strokeDasharray:`${dash} ${circ}`, strokeLinecap:"round",
+        style:{ transition:"stroke-dasharray 0.9s ease" } })
+    ),
+    React.createElement("div", { style:{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" } }, children)
+  );
+}
+
+// ── Check Row ─────────────────────────────────────────────────────────────────
+
+function CheckRow({ label, sublabel, done, onToggle, Icon }) {
+  return React.createElement("button", {
+    onClick: onToggle,
+    className: `check-row ${done ? "done" : "undone"}`,
+  },
+    React.createElement("div", { style:{
+      width:"40px", height:"40px", borderRadius:"10px", flexShrink:0,
+      background: done ? "rgba(255,255,255,0.12)" : "rgba(74,94,74,0.1)",
+      border:`1px solid ${done ? "rgba(255,255,255,0.15)" : "rgba(74,94,74,0.2)"}`,
+      display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.3s",
+    }},
+      done ? React.createElement(Checkmark) : React.createElement(Icon, { color:"#1E2D40", size:20 })
+    ),
+    React.createElement("div", { style:{ flex:1 } },
+      React.createElement("div", { style:{ color: done ? "#fff" : "#1C201A", fontSize:"15px", fontWeight:"500", transition:"color 0.3s" } }, label),
+      sublabel && React.createElement("div", { style:{ color: done ? "rgba(255,255,255,0.55)" : "#7A8272", fontSize:"12px", marginTop:"2px", fontWeight:"300" } }, sublabel)
+    ),
+    React.createElement("div", { style:{
+      width:"20px", height:"20px", borderRadius:"50%", flexShrink:0,
+      border:`2px solid ${done ? "rgba(255,255,255,0.35)" : "#A8AFA0"}`,
+      background: done ? "rgba(255,255,255,0.15)" : "transparent", transition:"all 0.3s",
+    }})
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+
+function App() {
+  const [sugarDays,     setSugarDays]     = useState(() => safeGet(STORAGE_KEYS.sugar, []));
+  const [liftSessions,  setLiftSessions]  = useState(() => safeGet(STORAGE_KEYS.lifts, []));
+  const [mindfulDays,   setMindfulDays]   = useState(() => safeGet(STORAGE_KEYS.mindfulness, []));
+  const [yogaDays,      setYogaDays]      = useState(() => safeGet(STORAGE_KEYS.yoga, []));
+  const [totalMiles,    setTotalMiles]    = useState(() => safeGet(STORAGE_KEYS.miles, 19.5));
+  const [sugarStart,    setSugarStart]    = useState(() => safeGet(STORAGE_KEYS.sugarStart, null));
+  const [activeTab,     setActiveTab]     = useState("today");
+  const [milesInput,    setMilesInput]    = useState("");
+  const [liftNote,      setLiftNote]      = useState("");
+  const [showLiftInput, setShowLiftInput] = useState(false);
+  const [toast,         setToast]         = useState(null);
+  const toastTimer = useRef(null);
+
+  useEffect(() => { safeSet(STORAGE_KEYS.sugar,       sugarDays);    }, [sugarDays]);
+  useEffect(() => { safeSet(STORAGE_KEYS.lifts,       liftSessions); }, [liftSessions]);
+  useEffect(() => { safeSet(STORAGE_KEYS.mindfulness, mindfulDays);  }, [mindfulDays]);
+  useEffect(() => { safeSet(STORAGE_KEYS.yoga,        yogaDays);     }, [yogaDays]);
+  useEffect(() => { safeSet(STORAGE_KEYS.miles,       totalMiles);   }, [totalMiles]);
+  useEffect(() => { safeSet(STORAGE_KEYS.sugarStart,  sugarStart);   }, [sugarStart]);
+
+  function notify(msg) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  }
+
+  const TODAY        = getToday();
+  const todaySugar   = sugarDays.includes(TODAY);
+  const todayMindful = mindfulDays.includes(TODAY);
+  const todayYoga    = yogaDays.includes(TODAY);
+  const todayLifted  = liftSessions.some(s => s.date === TODAY);
+
+  const sugarStreak = sugarStart
+    ? Math.floor((new Date() - new Date(sugarStart)) / (1000*60*60*24)) + 1
+    : 0;
+
+  const thisWeekLifts = (() => {
+    const now = new Date(), dow = now.getDay();
+    const ws = new Date(now); ws.setDate(now.getDate()-dow); ws.setHours(0,0,0,0);
+    return liftSessions.filter(s => new Date(s.date) >= ws).length;
+  })();
+
+  const milesRemaining = Math.max(50 - totalMiles, 0);
+  const daysLeft       = getRemainingMayDays();
+  const milesPerDay    = daysLeft > 0 ? (milesRemaining / daysLeft).toFixed(1) : 0;
+  const mayDay         = getDayOfMay();
+  const paceTarget     = (mayDay / 31) * 50;
+  const onPace         = totalMiles >= paceTarget;
+  const completedToday = [todaySugar, todayLifted, todayMindful, todayYoga].filter(Boolean).length;
+
+  function toggleSugar() {
+    if (todaySugar) { setSugarDays(p => p.filter(d => d !== TODAY)); notify("Unchecked for today"); }
+    else { setSugarDays(p => [...p, TODAY]); if (!sugarStart) setSugarStart(TODAY); notify("Sugar-free day logged"); }
+  }
+  function logLift() {
+    if (todayLifted) { setLiftSessions(p => p.filter(s => s.date !== TODAY)); notify("Session removed"); }
+    else { setLiftSessions(p => [...p, { date:TODAY, note:liftNote }]); setLiftNote(""); setShowLiftInput(false); notify("Lift session logged"); }
+  }
+  function toggleMindful() {
+    if (todayMindful) { setMindfulDays(p => p.filter(d => d !== TODAY)); notify("Unchecked"); }
+    else { setMindfulDays(p => [...p, TODAY]); notify("Mindfulness session done"); }
+  }
+  function toggleYoga() {
+    if (todayYoga) { setYogaDays(p => p.filter(d => d !== TODAY)); notify("Unchecked"); }
+    else { setYogaDays(p => [...p, TODAY]); notify("Active movement logged"); }
+  }
+  function addMiles() {
+    const m = parseFloat(milesInput);
+    if (isNaN(m) || m <= 0) return;
+    setTotalMiles(p => Math.min(parseFloat((p + m).toFixed(2)), 50));
+    setMilesInput(""); notify("+" + m + " miles added");
+  }
+
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+  const e = React.createElement;
+
+  // ── Today Tab ───────────────────────────────────────────────────────────────
+  function TodayTab() {
+    return e("div", { className:"fade-card" },
+      e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2.5px", textTransform:"uppercase", color:"#7A8272", marginBottom:"14px", fontWeight:"500" } }, "Today's Intentions"),
+        e(CheckRow, { label:"No Sugar", sublabel: sugarStreak > 0 ? `Day ${sugarStreak} of 30` : "Begin your streak today", done:todaySugar, onToggle:toggleSugar, Icon:IconNoSugar }),
+        e(CheckRow, { label:"Lift Session", sublabel:`${thisWeekLifts} of 3–4 sessions this week`, done:todayLifted, onToggle:() => todayLifted ? logLift() : setShowLiftInput(s => !s), Icon:IconLift }),
+        showLiftInput && !todayLifted && e("div", { style:{ display:"flex", gap:"8px", marginTop:"-4px", marginBottom:"12px", paddingLeft:"6px" } },
+          e("input", { type:"text", value:liftNote, onChange:ev => setLiftNote(ev.target.value), onKeyDown:ev => ev.key==="Enter"&&logLift(), placeholder:"Add a note… upper body, legs…" }),
+          e("button", { className:"navy-btn", onClick:logLift }, "Log")
+        ),
+        e(CheckRow, { label:"Mindfulness", sublabel:"Calm app · breathe & reset", done:todayMindful, onToggle:toggleMindful, Icon:IconMindfulness }),
+        e(CheckRow, { label:"20 Mins Activity", sublabel:"Walk, yoga, or any movement", done:todayYoga, onToggle:toggleYoga, Icon:IconMove })
+      ),
+      e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2.5px", textTransform:"uppercase", color:"#7A8272", marginBottom:"14px", fontWeight:"500" } }, "50 Miles in May"),
+        e("div", { style:{ display:"flex", alignItems:"center", justifyContent:"space-between" } },
+          e("div", null,
+            e("div", { style:{ fontSize:"36px", fontWeight:"600", color:"#1C201A", lineHeight:"1" } },
+              totalMiles.toFixed(1),
+              e("span", { style:{ fontSize:"14px", color:"#7A8272", fontWeight:"300", marginLeft:"4px" } }, "mi")
+            ),
+            e("div", { style:{ fontSize:"13px", color: onPace ? "#4A5E4A" : "#8B3A3A", marginTop:"6px", fontWeight:"400" } },
+              onPace ? "On pace ✓" : `${(paceTarget-totalMiles).toFixed(1)} mi behind pace`
+            ),
+            e("div", { style:{ fontSize:"12px", color:"#A8AFA0", marginTop:"3px", fontWeight:"300" } }, `${milesRemaining.toFixed(1)} mi remaining · ${daysLeft} days left`)
+          ),
+          e(ProgressRing, { pct:totalMiles/50, size:80, stroke:7, color:"#1E2D40", bg:"rgba(30,45,64,0.08)" },
+            e("div", { style:{ fontSize:"14px", fontWeight:"600", color:"#1C201A" } }, Math.round((totalMiles/50)*100) + "%")
+          )
+        ),
+        e("div", { style:{ marginTop:"14px", height:"5px", background:"rgba(30,45,64,0.1)", borderRadius:"3px" } },
+          e("div", { style:{ height:"100%", width:`${(totalMiles/50)*100}%`, background:"#1E2D40", borderRadius:"3px", transition:"width 0.8s ease" } })
+        )
+      )
+    );
+  }
+
+  // ── Progress Tab ────────────────────────────────────────────────────────────
+  function ProgressTab() {
+    const stats = [
+      { label:"Sugar-Free Days", value:sugarDays.length, goal:30, Icon:IconNoSugar },
+      { label:"Lift Sessions",   value:liftSessions.length, goal:null, Icon:IconLift },
+      { label:"Mindful Sessions",value:mindfulDays.length, goal:null, Icon:IconMindfulness },
+      { label:"Active Movement", value:yogaDays.length, goal:null, Icon:IconMove },
+    ];
+    return e("div", { className:"fade-card" },
+      e("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"12px" } },
+        stats.map(({ label, value, goal, Icon }) =>
+          e("div", { key:label, className:"stat-card" },
+            e("div", { style:{ display:"flex", justifyContent:"center", marginBottom:"10px" } }, e(Icon, { color:"#1E2D40", size:26 })),
+            e("div", { style:{ fontSize:"36px", fontWeight:"600", color:"#1C201A", lineHeight:"1" } }, value),
+            goal && e("div", { style:{ fontSize:"11px", color:"#A8AFA0", marginTop:"2px" } }, `of ${goal}`),
+            e("div", { style:{ fontSize:"11px", color:"#7A8272", marginTop:"6px", lineHeight:"1.4" } }, label)
+          )
+        )
+      ),
+      e("div", { className:"journal-card" },
+        e("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"12px" } },
+          e("span", { style:{ fontSize:"14px", color:"#3A4135", fontWeight:"500" } }, "30-Day No Sugar"),
+          e("span", { style:{ fontSize:"14px", color:"#1E2D40", fontWeight:"600" } }, `${sugarStreak} / 30`)
+        ),
+        e("div", { style:{ height:"6px", background:"rgba(30,45,64,0.1)", borderRadius:"3px" } },
+          e("div", { style:{ height:"100%", width:`${Math.min((sugarStreak/30)*100,100)}%`, background:"linear-gradient(90deg, #1E2D40, #3A5070)", borderRadius:"3px", transition:"width 0.9s ease" } })
+        ),
+        sugarStreak >= 30 && e("div", { style:{ textAlign:"center", marginTop:"12px", color:"#1E2D40", fontWeight:"500" } }, "30 days complete!"),
+        sugarStreak > 0 && sugarStreak < 30 && e("div", { style:{ fontSize:"12px", color:"#A8AFA0", marginTop:"8px", textAlign:"right", fontWeight:"300" } }, `${30-sugarStreak} days to go`)
+      ),
+      e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2px", textTransform:"uppercase", color:"#7A8272", marginBottom:"14px", fontWeight:"500" } }, "This Week · Lifting"),
+        e("div", { style:{ display:"flex", gap:"6px" } },
+          ["S","M","T","W","T","F","S"].map((d, i) => {
+            const now = new Date(), dow = now.getDay();
+            const ws = new Date(now); ws.setDate(now.getDate()-dow); ws.setHours(0,0,0,0);
+            const dd = new Date(ws); dd.setDate(ws.getDate()+i);
+            const ds = dd.toISOString().split("T")[0];
+            const has = liftSessions.some(s => s.date === ds);
+            const isToday = i === dow;
+            return e("div", { key:i, style:{ flex:1, textAlign:"center" } },
+              e("div", { style:{ fontSize:"10px", color: isToday ? "#1E2D40" : "#A8AFA0", marginBottom:"6px", fontWeight: isToday ? "600" : "300" } }, d),
+              e("div", { style:{ height:"32px", borderRadius:"6px", background: has ? "#1E2D40" : isToday ? "rgba(30,45,64,0.1)" : "rgba(30,45,64,0.05)", display:"flex", alignItems:"center", justifyContent:"center" } },
+                has && e("svg", { width:"12", height:"12", viewBox:"0 0 24 24", fill:"none", stroke:"#fff", strokeWidth:"3", strokeLinecap:"round", strokeLinejoin:"round" },
+                  e("polyline", { points:"20 6 9 17 4 12" })
+                )
+              )
+            );
+          })
+        ),
+        e("div", { style:{ fontSize:"12px", color:"#A8AFA0", marginTop:"10px", textAlign:"right", fontWeight:"300" } }, `${thisWeekLifts} of 3–4 sessions this week`)
+      ),
+      liftSessions.length > 0 && e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2px", textTransform:"uppercase", color:"#7A8272", marginBottom:"12px", fontWeight:"500" } }, "Lift History"),
+        [...liftSessions].reverse().slice(0,10).map((s,i) =>
+          e("div", { key:i, style:{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom:"1px solid rgba(160,148,128,0.3)", fontSize:"13px" } },
+            e("span", { style:{ color:"#3A4135", fontWeight:"400" } }, new Date(s.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})),
+            e("span", { style:{ color:"#7A8272", fontWeight:"300" } }, s.note || "Session")
+          )
+        )
+      )
+    );
+  }
+
+  // ── Miles Tab ───────────────────────────────────────────────────────────────
+  function MilesTab() {
+    return e("div", { className:"fade-card" },
+      e("div", { className:"journal-card", style:{ textAlign:"center", padding:"32px 24px" } },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"3px", textTransform:"uppercase", color:"#7A8272", marginBottom:"24px", fontWeight:"500" } }, "50 Miles in May"),
+        e("div", { style:{ display:"flex", justifyContent:"center", marginBottom:"24px" } },
+          e(ProgressRing, { pct:totalMiles/50, size:160, stroke:12, color:"#1E2D40", bg:"rgba(30,45,64,0.08)" },
+            e("div", { style:{ fontSize:"44px", fontWeight:"600", color:"#1C201A", lineHeight:"1" } }, totalMiles.toFixed(1)),
+            e("div", { style:{ fontSize:"12px", color:"#7A8272", marginTop:"4px", fontWeight:"300" } }, "of 50 miles")
+          )
+        ),
+        e("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"10px", marginBottom:"20px" } },
+          [
+            { val:milesRemaining.toFixed(1), label:"miles left" },
+            { val:daysLeft, label:"days left" },
+            { val:`${milesPerDay}/day`, label:"needed" },
+          ].map(({ val, label }) =>
+            e("div", { key:label, style:{ background:"#EAE5DC", borderRadius:"10px", padding:"12px 8px", border:"1px solid rgba(160,148,128,0.3)" } },
+              e("div", { style:{ fontSize:"18px", fontWeight:"600", color:"#1C201A" } }, val),
+              e("div", { style:{ fontSize:"11px", color:"#A8AFA0", marginTop:"3px", fontWeight:"300" } }, label)
+            )
+          )
+        ),
+        e("div", { style:{ fontSize:"13px", color: onPace ? "#4A5E4A" : "#8B3A3A", fontWeight:"400" } },
+          onPace ? "You're on pace — keep it up ✓" : `${(paceTarget-totalMiles).toFixed(1)} mi behind today's target`
+        ),
+        milesRemaining === 0 && e("div", { style:{ marginTop:"14px", fontSize:"15px", color:"#1E2D40", fontWeight:"500" } }, "Challenge complete!")
+      ),
+      e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2px", textTransform:"uppercase", color:"#7A8272", marginBottom:"14px", fontWeight:"500" } }, "Log Miles"),
+        e("div", { style:{ display:"flex", gap:"10px" } },
+          e("input", { type:"number", step:"0.1", min:"0.1", value:milesInput, onChange:ev => setMilesInput(ev.target.value), onKeyDown:ev => ev.key==="Enter"&&addMiles(), placeholder:"e.g. 2.5" }),
+          e("button", { className:"navy-btn", onClick:addMiles }, "Add")
+        )
+      ),
+      e("div", { className:"journal-card" },
+        e("div", { style:{ fontSize:"10px", letterSpacing:"2px", textTransform:"uppercase", color:"#7A8272", marginBottom:"14px", fontWeight:"500" } }, `Pace · Day ${mayDay} of 31`),
+        [
+          { label:"Your miles", val:totalMiles, color:"#1E2D40" },
+          { label:"Target pace", val:paceTarget, color:"rgba(30,45,64,0.2)" },
+        ].map(({ label, val, color }) =>
+          e("div", { key:label, style:{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"10px" } },
+            e("span", { style:{ fontSize:"12px", color:"#7A8272", minWidth:"76px", fontWeight:"300" } }, label),
+            e("div", { style:{ flex:1, height:"6px", background:"rgba(30,45,64,0.08)", borderRadius:"3px" } },
+              e("div", { style:{ height:"100%", width:`${Math.min((val/50)*100,100)}%`, background:color, borderRadius:"3px", transition:"width 0.7s ease" } })
+            ),
+            e("span", { style:{ fontSize:"12px", color:"#3A4135", minWidth:"34px", textAlign:"right", fontWeight:"400" } }, val.toFixed(1))
+          )
+        )
+      )
+    );
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return e("div", { style:{ minHeight:"100vh", background:"linear-gradient(160deg, #4A5E4A 0%, #526055 50%, #4E5E50 100%)" } },
+    toast && e("div", { className:"toast" }, toast),
+
+    // Header
+    e("div", { style:{ padding:"48px 24px 0", textAlign:"center" } },
+      e("div", { style:{ fontSize:"10px", letterSpacing:"4px", color:"#9AA89A", textTransform:"uppercase", marginBottom:"8px", fontWeight:"400" } }, "Nikki's Reboot"),
+      e("div", { style:{ fontSize:"28px", color:"#EEF0E8", letterSpacing:"0.5px", marginBottom:"4px", fontWeight:"600" } }, "Wellness Tracker"),
+      e("div", { style:{ fontSize:"12px", color:"#9AA89A", marginBottom:"30px", fontWeight:"300" } }, dateStr),
+      e("div", { style:{ display:"flex", justifyContent:"center", marginBottom:"30px" } },
+        e("div", { style:{ background:"#F0EDE6", borderRadius:"50%", width:"118px", height:"118px", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 24px rgba(0,0,0,0.2)" } },
+          e(ProgressRing, { pct:completedToday/4, size:118, stroke:9, color:"#1E2D40", bg:"rgba(30,45,64,0.08)" },
+            e("div", { style:{ fontSize:"30px", fontWeight:"600", color:"#1C201A" } }, completedToday),
+            e("div", { style:{ fontSize:"10px", color:"#7A8272", letterSpacing:"1px", marginTop:"1px", fontWeight:"400" } }, "of 4 today")
+          )
+        )
+      )
+    ),
+
+    // Tabs
+    e("div", { style:{ display:"flex", justifyContent:"center", borderBottom:"1px solid rgba(255,255,255,0.1)", marginBottom:"20px" } },
+      ["today","progress","miles"].map(id =>
+        e("button", { key:id, className:`tab ${activeTab===id?"active":""}`, onClick:() => setActiveTab(id) },
+          id.charAt(0).toUpperCase() + id.slice(1)
+        )
+      )
+    ),
+
+    // Content
+    e("div", { style:{ padding:"0 16px 56px", maxWidth:"460px", margin:"0 auto" } },
+      activeTab === "today"    && e(TodayTab),
+      activeTab === "progress" && e(ProgressTab),
+      activeTab === "miles"    && e(MilesTab)
+    )
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
