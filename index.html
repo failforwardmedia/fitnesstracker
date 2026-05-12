@@ -204,6 +204,7 @@ const SK = {
   sugarStart:"nr_sugarStart",
   workout:   "nr_workout_v1",
   badges:    "nr_badges",
+  journal:   "nr_journal",
 };
 
 // ── Local date — never UTC, fixes AZ/MST issue ────────────────────────────────
@@ -215,7 +216,8 @@ const TODAY = getLocalToday();
 
 // ── Seed data (runs once on fresh install) ────────────────────────────────────
 (function seedInitialData() {
-  if (localStorage.getItem("nr_seeded_v2")) return;
+  if (localStorage.getItem("nr_seeded_v3")) return;
+  localStorage.removeItem("nr_seeded_v2");
   const YESTERDAY = "2026-05-11";
   localStorage.setItem("nr_lifts",   JSON.stringify([{date:YESTERDAY,note:""}]));
   localStorage.setItem("nr_mindful", JSON.stringify([YESTERDAY]));
@@ -224,9 +226,9 @@ const TODAY = getLocalToday();
   localStorage.setItem("nr_sugarStart", JSON.stringify(null));
   localStorage.setItem("nr_miles",   JSON.stringify(23.7));
   localStorage.setItem("nr_miles_log", JSON.stringify([{date:YESTERDAY,miles:2.5}]));
-  localStorage.setItem("nr_workout_v1", JSON.stringify({d0_e0:true,d0_e1:true,d0_e2:true,d0_e3:true,d0_e4:true}));
+  localStorage.setItem("nr_workout_v1", JSON.stringify({w0_d0_e0:true,w0_d0_e1:true,w0_d0_e2:true,w0_d0_e3:true,w0_d0_e4:true}));
   localStorage.setItem("nr_badges",  JSON.stringify({}));
-  localStorage.setItem("nr_seeded_v2","1");
+  localStorage.setItem("nr_seeded_v3","1");
 })();
 
 const MAY_END   = new Date(2026,4,31,23,59,59);
@@ -294,32 +296,169 @@ const BADGE_DEFS = [
 ];
 
 // ── Workout plan ──────────────────────────────────────────────────────────────
-const WORKOUT_DAYS = [
-  { title:"Day 1", sub:"Push + Lower", exercises:[
-    {name:"Dumbbell Chest Press",    sets:"3×10",                        lower:false},
-    {name:"Dumbbell Shoulder Press", sets:"3×10",                        lower:false},
-    {name:"Tricep Pushdown",         sets:"3×12 — cable or band",        lower:false},
-    {name:"Goblet Squat",            sets:"3×10 — slow on the way down", lower:true },
-    {name:"Hip Thrust",              sets:"3×12 — barbell or dumbbell",  lower:true },
+const ALL_WEEKS = [
+  // ── Week 1 — Foundation ───────────────────────────────────────────────────
+  { week:1, label:"Foundation", note:"Weights conservative — feel it, don't be destroyed.", days:[
+    { title:"Day 1", sub:"Push + Lower", optional:false, exercises:[
+      {name:"Dumbbell Chest Press",    sets:"3×10",                        lower:false},
+      {name:"Dumbbell Shoulder Press", sets:"3×10",                        lower:false},
+      {name:"Tricep Pushdown",         sets:"3×12 — cable or band",        lower:false},
+      {name:"Goblet Squat",            sets:"3×10 — slow on the way down", lower:true },
+      {name:"Hip Thrust",              sets:"3×12 — dumbbell",             lower:true },
+    ]},
+    { title:"Day 2", sub:"Pull + Lower", optional:false, exercises:[
+      {name:"Lat Pulldown",            sets:"3×10",                        lower:false},
+      {name:"Seated Cable Row",        sets:"3×10",                        lower:false},
+      {name:"Dumbbell Bicep Curl",     sets:"3×12",                        lower:false},
+      {name:"Romanian Deadlift",       sets:"3×10 — hinge, not squat",     lower:true },
+      {name:"Lateral Band Walk",       sets:"3×15 each direction",         lower:true },
+    ]},
+    { title:"Day 3", sub:"Full Upper + Core", optional:false, exercises:[
+      {name:"Incline Dumbbell Press",  sets:"3×10",           lower:false},
+      {name:"Single-Arm Dumbbell Row", sets:"3×10 each side", lower:false},
+      {name:"Cable Face Pull",         sets:"3×15",           lower:false},
+      {name:"Lateral Raise",           sets:"3×12",           lower:false},
+      {name:"Reverse Lunge",           sets:"3×8 each leg",   lower:true },
+      {name:"Plank",                   sets:"3×30 seconds",   lower:false},
+      {name:"Dead Bug",                sets:"3×8 each side",  lower:false},
+    ]},
+    { title:"Day 4", sub:"Lower Body + Mobility", optional:true, exercises:[
+      {name:"Sumo Squat",              sets:"3×12 — wide stance, toes out", lower:true },
+      {name:"Romanian Deadlift",       sets:"3×12 — lighter, feel the stretch", lower:true },
+      {name:"Glute Kickback",          sets:"3×15 each side — cable or band", lower:true },
+      {name:"Lateral Band Walk",       sets:"3×20 each direction",          lower:true },
+      {name:"Standing Hip Circle",     sets:"2×10 each direction — slow",   lower:true },
+      {name:"Figure-4 Stretch",        sets:"Hold 30s each side",           lower:true },
+      {name:"Child's Pose",            sets:"Hold 60 seconds",              lower:false},
+    ]},
   ]},
-  { title:"Day 2", sub:"Pull + Lower", exercises:[
-    {name:"Lat Pulldown",            sets:"3×10",                        lower:false},
-    {name:"Seated Cable Row",        sets:"3×10",                        lower:false},
-    {name:"Dumbbell Bicep Curl",     sets:"3×12",                        lower:false},
-    {name:"Romanian Deadlift",       sets:"3×10 — hinge, not squat",     lower:true },
-    {name:"Lateral Band Walk",       sets:"3×15 each direction",         lower:true },
+
+  // ── Week 2 — Build ────────────────────────────────────────────────────────
+  { week:2, label:"Build", note:"Add a set or 2 reps to what felt easy. Push where you can.", days:[
+    { title:"Day 1", sub:"Push + Lower", optional:false, exercises:[
+      {name:"Dumbbell Chest Press",    sets:"4×10",                        lower:false},
+      {name:"Dumbbell Shoulder Press", sets:"4×10",                        lower:false},
+      {name:"Tricep Pushdown",         sets:"3×15 — cable or band",        lower:false},
+      {name:"Cable Chest Fly",         sets:"3×12 — new this week",        lower:false},
+      {name:"Goblet Squat",            sets:"4×10 — add weight if ready",  lower:true },
+      {name:"Hip Thrust",              sets:"4×12 — go heavier",           lower:true },
+    ]},
+    { title:"Day 2", sub:"Pull + Lower", optional:false, exercises:[
+      {name:"Lat Pulldown",            sets:"4×10",                        lower:false},
+      {name:"Seated Cable Row",        sets:"4×10",                        lower:false},
+      {name:"Dumbbell Bicep Curl",     sets:"3×15",                        lower:false},
+      {name:"Cable Straight-Arm Pulldown", sets:"3×12 — new this week",   lower:false},
+      {name:"Romanian Deadlift",       sets:"4×10 — add weight",           lower:true },
+      {name:"Lateral Band Walk",       sets:"3×20 each direction",         lower:true },
+    ]},
+    { title:"Day 3", sub:"Full Upper + Core", optional:false, exercises:[
+      {name:"Incline Dumbbell Press",  sets:"4×10",           lower:false},
+      {name:"Single-Arm Dumbbell Row", sets:"4×10 each side", lower:false},
+      {name:"Cable Face Pull",         sets:"3×15",           lower:false},
+      {name:"Lateral Raise",           sets:"3×15",           lower:false},
+      {name:"Reverse Lunge",           sets:"3×10 each leg",  lower:true },
+      {name:"Plank",                   sets:"3×40 seconds",   lower:false},
+      {name:"Dead Bug",                sets:"3×10 each side", lower:false},
+      {name:"Band Pull-Apart",         sets:"3×15 — new this week", lower:false},
+    ]},
+    { title:"Day 4", sub:"Lower Body + Mobility", optional:true, exercises:[
+      {name:"Sumo Squat",              sets:"4×12 — add weight",            lower:true },
+      {name:"Romanian Deadlift",       sets:"3×12",                         lower:true },
+      {name:"Glute Kickback",          sets:"3×15 each side — cable",       lower:true },
+      {name:"Curtsy Lunge",            sets:"3×10 each leg — new",          lower:true },
+      {name:"Lateral Band Walk",       sets:"3×20 each direction",          lower:true },
+      {name:"Hip Flexor Stretch",      sets:"Hold 45s each side",           lower:true },
+      {name:"Seated Forward Fold",     sets:"Hold 60 seconds",              lower:false},
+    ]},
   ]},
-  { title:"Day 3", sub:"Full Upper + Core", exercises:[
-    {name:"Incline Dumbbell Press",  sets:"3×10",           lower:false},
-    {name:"Single-Arm Dumbbell Row", sets:"3×10 each side", lower:false},
-    {name:"Cable Face Pull",         sets:"3×15",           lower:false},
-    {name:"Lateral Raise",           sets:"3×12",           lower:false},
-    {name:"Reverse Lunge",           sets:"3×8 each leg",   lower:true },
-    {name:"Plank",                   sets:"3×30 seconds",   lower:false},
-    {name:"Dead Bug",                sets:"3×8 each side",  lower:false},
+
+  // ── Week 3 — Intensity ────────────────────────────────────────────────────
+  { week:3, label:"Intensity", note:"This week you earn it. Go heavier, move with intention.", days:[
+    { title:"Day 1", sub:"Push + Lower", optional:false, exercises:[
+      {name:"Dumbbell Chest Press",    sets:"4×12",                              lower:false},
+      {name:"Dumbbell Shoulder Press", sets:"4×10 + drop set on last",           lower:false},
+      {name:"Tricep Pushdown",         sets:"4×12 — heavier",                    lower:false},
+      {name:"Cable Chest Fly",         sets:"3×15",                              lower:false},
+      {name:"Goblet Squat",            sets:"4×12 — pause at bottom",            lower:true },
+      {name:"Hip Thrust",              sets:"4×15 — full squeeze at top",        lower:true },
+      {name:"Bulgarian Split Squat",   sets:"3×8 each leg — new",                lower:true },
+    ]},
+    { title:"Day 2", sub:"Pull + Lower", optional:false, exercises:[
+      {name:"Lat Pulldown",            sets:"4×12",                              lower:false},
+      {name:"Seated Cable Row",        sets:"4×10 + drop set on last",           lower:false},
+      {name:"Dumbbell Bicep Curl",     sets:"4×12",                              lower:false},
+      {name:"Cable Straight-Arm Pulldown", sets:"3×15",                         lower:false},
+      {name:"Romanian Deadlift",       sets:"4×12 — slow eccentric",            lower:true },
+      {name:"Lateral Band Walk",       sets:"4×20 each direction",               lower:true },
+      {name:"Single-Leg Deadlift",     sets:"3×8 each side — new",              lower:true },
+    ]},
+    { title:"Day 3", sub:"Full Upper + Core", optional:false, exercises:[
+      {name:"Incline Dumbbell Press",  sets:"4×12",               lower:false},
+      {name:"Single-Arm Dumbbell Row", sets:"4×12 each side",     lower:false},
+      {name:"Cable Face Pull",         sets:"4×15",               lower:false},
+      {name:"Lateral Raise",           sets:"4×12 + drop set",    lower:false},
+      {name:"Reverse Lunge",           sets:"4×10 each leg",      lower:true },
+      {name:"Plank",                   sets:"3×50 seconds",       lower:false},
+      {name:"Dead Bug",                sets:"3×12 each side",     lower:false},
+      {name:"Band Pull-Apart",         sets:"3×20",               lower:false},
+      {name:"Cable Crunch",            sets:"3×15 — new",         lower:false},
+    ]},
+    { title:"Day 4", sub:"Lower Body + Mobility", optional:true, exercises:[
+      {name:"Sumo Squat",              sets:"4×15",                              lower:true },
+      {name:"Romanian Deadlift",       sets:"4×12 — slow and controlled",       lower:true },
+      {name:"Glute Kickback",          sets:"4×15 each side",                   lower:true },
+      {name:"Curtsy Lunge",            sets:"3×12 each leg",                    lower:true },
+      {name:"Lateral Band Walk",       sets:"4×20 each direction",              lower:true },
+      {name:"Pigeon Pose",             sets:"Hold 45s each side",               lower:true },
+      {name:"Supine Spinal Twist",     sets:"Hold 30s each side",               lower:false},
+    ]},
+  ]},
+
+  // ── Week 4 — Peak ─────────────────────────────────────────────────────────
+  { week:4, label:"Peak", note:"Your strongest week. Leave nothing in the tank.", days:[
+    { title:"Day 1", sub:"Push + Lower", optional:false, exercises:[
+      {name:"Dumbbell Chest Press",    sets:"5×10 — heaviest yet",               lower:false},
+      {name:"Dumbbell Shoulder Press", sets:"4×12 — superset with lateral raise",lower:false},
+      {name:"Lateral Raise",           sets:"4×12 — superset with above",        lower:false},
+      {name:"Tricep Pushdown",         sets:"4×15 — cable",                      lower:false},
+      {name:"Cable Chest Fly",         sets:"3×15 — full stretch",               lower:false},
+      {name:"Goblet Squat",            sets:"5×10 — heaviest yet",               lower:true },
+      {name:"Hip Thrust",              sets:"5×12 — max weight",                 lower:true },
+      {name:"Bulgarian Split Squat",   sets:"3×10 each leg",                     lower:true },
+    ]},
+    { title:"Day 2", sub:"Pull + Lower", optional:false, exercises:[
+      {name:"Lat Pulldown",            sets:"5×10 — heaviest yet",               lower:false},
+      {name:"Seated Cable Row",        sets:"4×12 — superset with face pull",    lower:false},
+      {name:"Cable Face Pull",         sets:"4×15 — superset with above",        lower:false},
+      {name:"Dumbbell Bicep Curl",     sets:"4×12 + drop set on last",           lower:false},
+      {name:"Cable Straight-Arm Pulldown", sets:"4×15",                         lower:false},
+      {name:"Romanian Deadlift",       sets:"5×10 — heavy",                     lower:true },
+      {name:"Single-Leg Deadlift",     sets:"3×10 each side",                   lower:true },
+      {name:"Lateral Band Walk",       sets:"4×20 each direction",               lower:true },
+    ]},
+    { title:"Day 3", sub:"Full Upper + Core", optional:false, exercises:[
+      {name:"Incline Dumbbell Press",  sets:"5×10 — heavy",       lower:false},
+      {name:"Single-Arm Dumbbell Row", sets:"5×10 each side",     lower:false},
+      {name:"Cable Face Pull",         sets:"4×15",               lower:false},
+      {name:"Band Pull-Apart",         sets:"4×20",               lower:false},
+      {name:"Reverse Lunge",           sets:"4×12 each leg",      lower:true },
+      {name:"Bulgarian Split Squat",   sets:"3×10 each leg",      lower:true },
+      {name:"Plank",                   sets:"3×60 seconds",       lower:false},
+      {name:"Dead Bug",                sets:"3×12 each side",     lower:false},
+      {name:"Cable Crunch",            sets:"3×20",               lower:false},
+    ]},
+    { title:"Day 4", sub:"Lower Body + Mobility", optional:true, exercises:[
+      {name:"Sumo Squat",              sets:"4×15 — heavy",                      lower:true },
+      {name:"Romanian Deadlift",       sets:"4×12",                              lower:true },
+      {name:"Glute Kickback",          sets:"4×15 each side",                   lower:true },
+      {name:"Curtsy Lunge",            sets:"4×12 each leg",                    lower:true },
+      {name:"Lateral Band Walk",       sets:"4×20 each direction",              lower:true },
+      {name:"Full Body Stretch Flow",  sets:"10 minutes — slow, breathe deep",  lower:false},
+      {name:"Legs Up the Wall",        sets:"5 minutes — lymphatic cooldown",   lower:false},
+    ]},
   ]},
 ];
-const TOTAL_EX = WORKOUT_DAYS.reduce((s,d)=>s+d.exercises.length,0);
+
 function exKey(di,ei){return `d${di}_e${ei}`;}
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
@@ -453,28 +592,73 @@ function TodayTab({todaySugar,sugarStreak,todayLifted,thisWeekLifts,todayMindful
 
 // ── Workout Tab — outside App ─────────────────────────────────────────────────
 function WorkoutTab(){
-  const [checks,setChecks]=useState(()=>safeGet(SK.workout,{}));
-  useEffect(()=>{safeSet(SK.workout,checks);},[checks]);
-  function toggle(di,ei){const k=exKey(di,ei);setChecks(prev=>({...prev,[k]:!prev[k]}));}
-  function resetAll(){if(!window.confirm("Reset all checkboxes for the week?"))return;setChecks({});}
-  const done=Object.values(checks).filter(Boolean).length;
-  const pct=TOTAL_EX>0?(done/TOTAL_EX)*100:0;
-  function isDayDone(di){return WORKOUT_DAYS[di].exercises.every((_,ei)=>checks[exKey(di,ei)]);}
+  const [activeWeek, setActiveWeek] = useState(()=>safeGet("nr_active_week",0));
+  const [allChecks,  setAllChecks]  = useState(()=>safeGet(SK.workout,{}));
+  useEffect(()=>{safeSet(SK.workout,allChecks);},[allChecks]);
+  useEffect(()=>{safeSet("nr_active_week",activeWeek);},[activeWeek]);
+
+  const week = ALL_WEEKS[activeWeek];
+  const wKey = (wi,di,ei) => `w${wi}_d${di}_e${ei}`;
+
+  function toggle(di,ei){
+    const k=wKey(activeWeek,di,ei);
+    setAllChecks(prev=>({...prev,[k]:!prev[k]}));
+  }
+  function resetWeek(){
+    if(!window.confirm(`Reset all checkboxes for Week ${week.week}?`))return;
+    const cleaned={...allChecks};
+    week.days.forEach((d,di)=>d.exercises.forEach((_,ei)=>{ delete cleaned[wKey(activeWeek,di,ei)]; }));
+    setAllChecks(cleaned);
+  }
+
+  const totalEx = week.days.reduce((s,d)=>s+d.exercises.length,0);
+  const done = week.days.reduce((s,d,di)=>s+d.exercises.filter((_,ei)=>!!allChecks[wKey(activeWeek,di,ei)]).length,0);
+  const pct  = totalEx>0?(done/totalEx)*100:0;
+  function isDayDone(di){ return week.days[di].exercises.every((_,ei)=>!!allChecks[wKey(activeWeek,di,ei)]); }
+
   return e("div",{className:"fade-card"},
-    e("div",{className:"journal-card"},
-      e("span",{className:"section-label",style:{marginBottom:"2px"}},"Week 1 · Lifting"),
-      e("div",{style:{fontSize:"12px",color:"#A8AFA0",fontWeight:"300"}},"Weights conservative — feel it, don't be destroyed"),
-      e("div",{className:"workout-progress-bar"},e("div",{className:"workout-progress-fill",style:{width:`${pct}%`}})),
-      e("div",{className:"workout-progress-label"},`${done} of ${TOTAL_EX} exercises done`),
-      done===TOTAL_EX&&e("div",{style:{textAlign:"center",marginTop:"12px",fontSize:"13px",color:"#4A5E4A",fontWeight:"500"}},"Week complete! 🏆")
+
+    // Week selector
+    e("div",{style:{display:"flex",gap:"6px",marginBottom:"12px"}},
+      ALL_WEEKS.map((w,wi)=>
+        e("button",{key:wi,onClick:()=>setActiveWeek(wi),style:{
+          flex:1,padding:"10px 4px",borderRadius:"10px",border:"none",cursor:"pointer",
+          fontFamily:"'Poppins',sans-serif",fontSize:"11px",fontWeight:"500",
+          letterSpacing:"0.5px",transition:"all 0.2s",
+          background: wi===activeWeek?"#1E2D40":"#F0EDE6",
+          color: wi===activeWeek?"#fff":"#7A8272",
+          boxShadow: wi===activeWeek?"0 2px 10px rgba(30,45,64,0.3)":"none",
+        }},`Wk ${w.week}`)
+      )
     ),
-    WORKOUT_DAYS.map((day,di)=>e("div",{key:di,className:"day-card"},
+
+    // Week header
+    e("div",{className:"journal-card"},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+        e("div",null,
+          e("span",{className:"section-label",style:{marginBottom:"2px"}},`Week ${week.week} · ${week.label}`),
+          e("div",{style:{fontSize:"12px",color:"#A8AFA0",fontWeight:"300"}},week.note)
+        )
+      ),
+      e("div",{className:"workout-progress-bar"},e("div",{className:"workout-progress-fill",style:{width:`${pct}%`}})),
+      e("div",{className:"workout-progress-label"},`${done} of ${totalEx} exercises done`),
+      done===totalEx&&e("div",{style:{textAlign:"center",marginTop:"12px",fontSize:"13px",color:"#4A5E4A",fontWeight:"500"}},"Week complete! 🏆")
+    ),
+
+    // Day cards
+    week.days.map((day,di)=>e("div",{key:di,className:"day-card"},
       e("div",{className:"day-header"},
-        e("div",null,e("div",{className:"day-title"},day.title),e("div",{className:"day-sub"},day.sub)),
+        e("div",null,
+          e("div",{style:{display:"flex",alignItems:"center",gap:"8px"}},
+            e("div",{className:"day-title"},day.title),
+            day.optional&&e("span",{style:{fontSize:"9px",letterSpacing:"1px",textTransform:"uppercase",background:"rgba(175,140,87,0.3)",color:"#AF8C57",padding:"2px 8px",borderRadius:"99px"}},"Optional")
+          ),
+          e("div",{className:"day-sub"},day.sub)
+        ),
         e("div",{className:`day-badge${isDayDone(di)?" complete":""}`},isDayDone(di)?"✓ Done":`${day.exercises.length} moves`)
       ),
       e("div",null,day.exercises.map((ex,ei)=>{
-        const checked=!!checks[exKey(di,ei)];
+        const checked=!!allChecks[wKey(activeWeek,di,ei)];
         return e("div",{key:ei,className:`ex-row${checked?" checked":""}`,onClick:()=>toggle(di,ei)},
           e("div",{className:"ex-checkbox"},checked&&e(Checkmark,{color:"#fff"})),
           e("div",{className:"ex-info"},e("div",{className:"ex-name"},ex.name),e("div",{className:"ex-sets"},ex.sets)),
@@ -482,13 +666,148 @@ function WorkoutTab(){
         );
       }))
     )),
-    e("div",{style:{textAlign:"center",marginTop:"8px",paddingBottom:"8px"}},e("button",{className:"ghost-btn",onClick:resetAll},"Reset Week")),
-    e("div",{style:{textAlign:"center",fontSize:"11px",color:"rgba(238,240,232,0.4)",marginTop:"12px",fontWeight:"300"}},"Tap any exercise to check it off")
+
+    e("div",{style:{textAlign:"center",marginTop:"8px",paddingBottom:"4px"}},e("button",{className:"ghost-btn",onClick:resetWeek},`Reset Week ${week.week}`)),
+    e("div",{style:{textAlign:"center",fontSize:"11px",color:"rgba(238,240,232,0.4)",marginTop:"10px",marginBottom:"4px",fontWeight:"300"}},"Tap any exercise to check it off")
+  );
+}
+
+// ── Streak Calendar ──────────────────────────────────────────────────────────
+function StreakCalendar({sugarDays,liftSessions,mindfulDays,moveDays}){
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const firstDow = new Date(year,month,1).getDay();
+  const todayD = now.getDate();
+
+  function dayKey(d){
+    return `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  }
+  function getStatus(d){
+    const k = dayKey(d);
+    const lifted   = liftSessions.some(s=>s.date===k);
+    const mindful  = mindfulDays.includes(k);
+    const moved    = moveDays.includes(k);
+    const noSugar  = sugarDays.includes(k);
+    const count    = [lifted,mindful,moved,noSugar].filter(Boolean).length;
+    return count;
+  }
+
+  const cells = [];
+  for(let i=0;i<firstDow;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+  const monthName = now.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+  return e("div",{className:"journal-card"},
+    e("span",{className:"section-label"},"Streak Calendar"),
+    e("div",{style:{fontSize:"12px",color:"#3A4135",fontWeight:"500",marginBottom:"12px"}},monthName),
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px",marginBottom:"6px"}},
+      ["S","M","T","W","T","F","S"].map((d,i)=>e("div",{key:i,style:{textAlign:"center",fontSize:"9px",color:"#A8AFA0",fontWeight:"500",paddingBottom:"2px"}},d))
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"4px"}},
+      cells.map((d,i)=>{
+        if(!d) return e("div",{key:i});
+        const status = getStatus(d);
+        const isFuture = d > todayD;
+        const isToday  = d === todayD;
+        let bg = "rgba(160,148,128,0.1)";
+        let color = "#A8AFA0";
+        if(!isFuture && status===4){ bg="#1E2D40"; color="#fff"; }
+        else if(!isFuture && status>=2){ bg="rgba(30,45,64,0.25)"; color="#3A4135"; }
+        else if(!isFuture && status===1){ bg="rgba(30,45,64,0.12)"; color="#7A8272"; }
+        return e("div",{key:i,style:{
+          aspectRatio:"1",borderRadius:"6px",background:bg,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:"11px",fontWeight:isToday?"600":"400",color,
+          border:isToday?`2px solid #AF8C57`:"none",
+          transition:"all 0.2s",
+        }},d);
+      })
+    ),
+    e("div",{style:{display:"flex",gap:"12px",marginTop:"12px",flexWrap:"wrap"}},
+      [{bg:"#1E2D40",color:"#fff",label:"All 4 habits"},
+       {bg:"rgba(30,45,64,0.25)",color:"#3A4135",label:"2–3 habits"},
+       {bg:"rgba(30,45,64,0.12)",color:"#7A8272",label:"1 habit"},
+       {bg:"rgba(160,148,128,0.1)",color:"#A8AFA0",label:"Rest day"},
+      ].map(({bg,color,label})=>
+        e("div",{key:label,style:{display:"flex",alignItems:"center",gap:"5px"}},
+          e("div",{style:{width:"10px",height:"10px",borderRadius:"3px",background:bg,flexShrink:0}}),
+          e("div",{style:{fontSize:"10px",color:"#7A8272",fontWeight:"300"}},label)
+        )
+      )
+    )
+  );
+}
+
+// ── Weekly Journal ────────────────────────────────────────────────────────────
+function WeeklyJournal({journal,setJournal}){
+  const now = new Date();
+  const dow  = now.getDay();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate()-dow); weekStart.setHours(0,0,0,0);
+  const yr = weekStart.getFullYear();
+  const mo = String(weekStart.getMonth()+1).padStart(2,"0");
+  const dy = String(weekStart.getDate()).padStart(2,"0");
+  const weekKey = `week_${yr}_${mo}_${dy}`;
+
+  const current = journal[weekKey] || "";
+  const [draft, setDraft] = useState(current);
+  const [saved, setSaved]  = useState(false);
+
+  function save(){
+    setJournal(p=>({...p,[weekKey]:draft}));
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  }
+
+  const pastEntries = Object.entries(journal)
+    .filter(([k])=>k!==weekKey&&k.startsWith("week_"))
+    .sort((a,b)=>b[0].localeCompare(a[0]))
+    .slice(0,4);
+
+  function weekLabel(key){
+    const parts = key.replace("week_","").split("_");
+    const d = new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));
+    return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" week";
+  }
+
+  return e("div",{className:"journal-card"},
+    e("span",{className:"section-label"},"Weekly Check-In"),
+    e("div",{style:{fontSize:"12px",color:"#7A8272",fontWeight:"300",marginBottom:"12px",lineHeight:"1.5"}},"How did this week feel? What was hard? What worked?"),
+    e("textarea",{
+      value:draft,
+      onChange:ev=>setDraft(ev.target.value),
+      placeholder:"Just for you. No rules.",
+      style:{
+        width:"100%",minHeight:"90px",background:"#EAE5DC",
+        border:"1px solid rgba(160,148,128,0.3)",borderRadius:"10px",
+        padding:"11px 14px",color:"#1C201A",fontFamily:"'Poppins',sans-serif",
+        fontSize:"13px",fontWeight:"300",outline:"none",resize:"vertical",
+        lineHeight:"1.6",
+      }
+    }),
+    e("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:"8px"}},
+      e("button",{className:"navy-btn",onClick:save,style:{padding:"9px 20px",fontSize:"12px"}},
+        saved?"Saved ✓":"Save Note"
+      )
+    ),
+    pastEntries.length>0&&e("div",{style:{marginTop:"16px",paddingTop:"14px",borderTop:"1px solid rgba(160,148,128,0.2)"}},
+      e("div",{style:{fontSize:"10px",letterSpacing:"2px",textTransform:"uppercase",color:"#A8AFA0",marginBottom:"10px",fontWeight:"500"}},"Past Entries"),
+      pastEntries.map(([k,v])=>
+        e("div",{key:k,style:{marginBottom:"10px"}},
+          e("div",{style:{fontSize:"11px",color:"#AF8C57",fontWeight:"500",marginBottom:"3px"}},weekLabel(k)),
+          e("div",{style:{fontSize:"12px",color:"#7A8272",fontWeight:"300",lineHeight:"1.5",fontStyle:"italic"}},
+            v.length>120?v.slice(0,120)+"…":v
+          )
+        )
+      )
+    )
   );
 }
 
 // ── Progress Tab — outside App ────────────────────────────────────────────────
-function ProgressTab({sugarDays,liftSessions,mindfulDays,moveDays,sugarStreak,thisWeekLifts,earnedBadges}){
+function ProgressTab({sugarDays,liftSessions,mindfulDays,moveDays,sugarStreak,thisWeekLifts,earnedBadges,journal,setJournal}){
   const stats=[
     {label:"Sugar-Free Days",value:sugarDays.length,   goal:30,  Icon:IconNoSugar},
     {label:"Lift Sessions",  value:liftSessions.length,goal:null,Icon:IconLift},
@@ -552,6 +871,12 @@ function ProgressTab({sugarDays,liftSessions,mindfulDays,moveDays,sugarStreak,th
         )
       )
     ),
+
+    // Streak calendar
+    e(StreakCalendar,{sugarDays,liftSessions,mindfulDays,moveDays}),
+
+    // Weekly journal
+    e(WeeklyJournal,{journal,setJournal}),
 
     // Badge shelf
     e("div",{className:"journal-card"},
@@ -631,6 +956,7 @@ function App(){
   const [milesLog,     setMilesLog]     = useState(()=>safeGet(SK.milesLog,[]));
   const [sugarStart,   setSugarStart]   = useState(()=>safeGet(SK.sugarStart,null));
   const [earnedBadges, setEarnedBadges] = useState(()=>safeGet(SK.badges,{}));
+  const [journal,      setJournal]      = useState(()=>safeGet(SK.journal,{}));
   const [activeTab,    setActiveTab]    = useState("today");
   const [milesInput,   setMilesInput]   = useState("");
   const [showLiftNote, setShowLiftNote] = useState(false);
@@ -647,6 +973,7 @@ function App(){
   useEffect(()=>{safeSet(SK.milesLog,   milesLog);    },[milesLog]);
   useEffect(()=>{safeSet(SK.sugarStart, sugarStart);  },[sugarStart]);
   useEffect(()=>{safeSet(SK.badges,     earnedBadges);},[earnedBadges]);
+  useEffect(()=>{safeSet(SK.journal,    journal);     },[journal]);
 
   function notify(msg,isBadge){
     setToast(isBadge?msg:{text:msg});
@@ -788,7 +1115,7 @@ function App(){
     e("div",{style:{padding:"0 16px 56px",maxWidth:"460px",margin:"0 auto"}},
       activeTab==="today"    && e(TodayTab,{todaySugar,sugarStreak,todayLifted,thisWeekLifts,todayMindful,todayMove,toggleSugar,logLift,toggleMindful,toggleMove,liftNote,setLiftNote,showLiftNote,setShowLiftNote,totalMiles,milesRemaining,daysLeft,paceTarget,onPace}),
       activeTab==="workout"  && e(WorkoutTab),
-      activeTab==="progress" && e(ProgressTab,{sugarDays,liftSessions,mindfulDays,moveDays,sugarStreak,thisWeekLifts,earnedBadges}),
+      activeTab==="progress" && e(ProgressTab,{sugarDays,liftSessions,mindfulDays,moveDays,sugarStreak,thisWeekLifts,earnedBadges,journal,setJournal}),
       activeTab==="miles"    && e(MilesTab,{totalMiles,milesRemaining,daysLeft,milesPerDay,mayDay,paceTarget,onPace,milesInput,setMilesInput,addMiles,milesLog,deleteMileEntry})
     )
   );
