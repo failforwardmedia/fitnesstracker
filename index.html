@@ -496,40 +496,172 @@ function CheckRow({label,sublabel,done,onToggle,Icon}){
 }
 
 // ── Affirmation Card — outside App ────────────────────────────────────────────
+// ── Audio engine for breathing ────────────────────────────────────────────────
+function createAudioCtx() {
+  try { return new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+}
+
+function playTone(ctx, freq, type, gainVal, startTime, duration, fadeOut) {
+  if (!ctx) return;
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type      = type || "sine";
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(gainVal, startTime + 0.08);
+  if (fadeOut) {
+    gain.gain.setValueAtTime(gainVal, startTime + duration - 0.3);
+    gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  }
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function playChime(ctx, startTime) {
+  if (!ctx) return;
+  // Layered singing bowl chime: fundamental + harmonics
+  [[220, 0.18, 2.5], [440, 0.10, 2.0], [660, 0.06, 1.5], [880, 0.03, 1.2]].forEach(([f,g,d]) => {
+    playTone(ctx, f, "sine", g, startTime, d, true);
+  });
+}
+
+function playAmbientDrone(ctx) {
+  if (!ctx) return null;
+  // Warm low drone — two slightly detuned oscillators for warmth
+  const osc1  = ctx.createOscillator();
+  const osc2  = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  const gain2 = ctx.createGain();
+  osc1.connect(gain1); gain1.connect(ctx.destination);
+  osc2.connect(gain2); gain2.connect(ctx.destination);
+  osc1.type = "sine"; osc1.frequency.setValueAtTime(80, ctx.currentTime);
+  osc2.type = "sine"; osc2.frequency.setValueAtTime(82.5, ctx.currentTime); // slight detune
+  gain1.gain.setValueAtTime(0, ctx.currentTime);
+  gain1.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 1.5);
+  gain2.gain.setValueAtTime(0, ctx.currentTime);
+  gain2.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 1.5);
+  osc1.start(); osc2.start();
+  return [osc1, osc2, gain1, gain2];
+}
+
+function stopDrone(droneNodes, ctx) {
+  if (!droneNodes || !ctx) return;
+  const [osc1, osc2, gain1, gain2] = droneNodes;
+  const t = ctx.currentTime;
+  gain1.gain.linearRampToValueAtTime(0, t + 1.5);
+  gain2.gain.linearRampToValueAtTime(0, t + 1.5);
+  setTimeout(() => { try { osc1.stop(); osc2.stop(); } catch {} }, 1600);
+}
+
+function playPhaseChime(ctx, phase) {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  if (phase === "inhale") {
+    // Rising pair — soft and inviting
+    playTone(ctx, 528, "sine", 0.12, t,        0.8, true);
+    playTone(ctx, 660, "sine", 0.07, t + 0.15, 0.6, true);
+  } else if (phase === "hold") {
+    // Single sustained neutral tone
+    playTone(ctx, 432, "sine", 0.08, t, 0.7, true);
+  } else if (phase === "exhale") {
+    // Descending pair — releasing, letting go
+    playTone(ctx, 396, "sine", 0.10, t,        0.8, true);
+    playTone(ctx, 264, "sine", 0.06, t + 0.15, 0.6, true);
+  } else if (phase === "done") {
+    // Closing double chime
+    playChime(ctx, t);
+    playChime(ctx, t + 0.8);
+  }
+}
+
 function AffirmationCard() {
-  const [breathing, setBreathing] = useState(false);
+  const [breathing,   setBreathing]   = useState(false);
   const [breathPhase, setBreathPhase] = useState("tap to breathe");
+  const [orbScale,    setOrbScale]    = useState(1);
   const breathTimer = useRef(null);
+  const audioCtx    = useRef(null);
+  const droneNodes  = useRef(null);
+
+  function getCtx() {
+    if (!audioCtx.current) audioCtx.current = createAudioCtx();
+    // Resume if suspended (iOS requires user gesture)
+    if (audioCtx.current && audioCtx.current.state === "suspended") {
+      audioCtx.current.resume();
+    }
+    return audioCtx.current;
+  }
+
+  function stopBreathing() {
+    clearTimeout(breathTimer.current);
+    stopDrone(droneNodes.current, audioCtx.current);
+    droneNodes.current = null;
+    setBreathing(false);
+    setBreathPhase("tap to breathe");
+    setOrbScale(1);
+  }
 
   function startBreathe() {
-    if (breathing) return;
+    // If already breathing, tap again to stop
+    if (breathing) { stopBreathing(); return; }
+
+    const ctx = getCtx();
     setBreathing(true);
-    setBreathPhase("inhale... 4");
-    let count = 4;
-    const tick = setInterval(() => {
-      count--;
-      if (count > 0) { setBreathPhase(`inhale... ${count}`); }
-      else {
-        setBreathPhase("hold... 4");
-        let h = 4;
-        const hold = setInterval(() => {
-          h--;
-          if (h > 0) { setBreathPhase(`hold... ${h}`); }
-          else {
-            clearInterval(hold);
-            setBreathPhase("exhale... 6");
-            let ex = 6;
-            const exhale = setInterval(() => {
-              ex--;
-              if (ex > 0) { setBreathPhase(`exhale... ${ex}`); }
-              else { clearInterval(exhale); setBreathing(false); setBreathPhase("tap to breathe"); }
-            }, 1000);
-          }
-        }, 1000);
-        clearInterval(tick);
-      }
-    }, 1000);
-    breathTimer.current = tick;
+
+    // Opening chime + start drone
+    playChime(ctx, ctx.currentTime);
+    droneNodes.current = playAmbientDrone(ctx);
+
+    // Run one full 4-4-6 cycle then stop
+    // Inhale: 4s, Hold: 4s, Exhale: 6s = 14s total
+    let elapsed = 0;
+
+    function phase(name, label, duration, orbTo, next) {
+      setBreathPhase(label);
+      setOrbScale(orbTo);
+      playPhaseChime(ctx, name);
+      breathTimer.current = setTimeout(next, duration * 1000);
+    }
+
+    // Small delay after opening chime
+    breathTimer.current = setTimeout(() => {
+      phase("inhale", "inhale... 4", 1, 1.3, () =>
+        phase("inhale", "inhale... 3", 1, 1.5, () =>
+          phase("inhale", "inhale... 2", 1, 1.6, () =>
+            phase("inhale", "inhale... 1", 1, 1.7, () =>
+              phase("hold", "hold... 4", 1, 1.7, () =>
+                phase("hold", "hold... 3", 1, 1.7, () =>
+                  phase("hold", "hold... 2", 1, 1.7, () =>
+                    phase("hold", "hold... 1", 1, 1.7, () =>
+                      phase("exhale", "exhale... 6", 1, 1.4, () =>
+                        phase("exhale", "exhale... 5", 1, 1.2, () =>
+                          phase("exhale", "exhale... 4", 1, 1.0, () =>
+                            phase("exhale", "exhale... 3", 1, 0.85, () =>
+                              phase("exhale", "exhale... 2", 1, 0.75, () =>
+                                phase("exhale", "exhale... 1", 1, 0.7, () => {
+                                  // Closing
+                                  playPhaseChime(ctx, "done");
+                                  stopDrone(droneNodes.current, ctx);
+                                  droneNodes.current = null;
+                                  setOrbScale(1);
+                                  setBreathing(false);
+                                  setBreathPhase("tap to breathe");
+                                })
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
+    }, 800);
   }
 
   return e("div",{className:"affirmation-card"},
@@ -541,14 +673,27 @@ function AffirmationCard() {
         )
       )
     ),
-    e("div",{style:{marginTop:"16px",paddingTop:"14px",borderTop:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:"12px"}},
-      e("div",{className:"breathe-orb",onClick:startBreathe},
-        e("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.7)",strokeWidth:"1.8",strokeLinecap:"round"},
-          e("path",{d:"M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"}),
-          e("path",{d:"M12 8v4l2 2"})
-        )
+    e("div",{style:{marginTop:"16px",paddingTop:"14px",borderTop:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:"14px"}},
+      e("div",{
+        className:"breathe-orb",
+        onClick:startBreathe,
+        style:{
+          transform:`scale(${orbScale})`,
+          transition:"transform 1s ease-in-out",
+          background: breathing ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)",
+        }
+      },
+        breathing
+          ? e("div",{style:{width:"10px",height:"10px",borderRadius:"50%",background:"rgba(255,255,255,0.6)"}})
+          : e("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.7)",strokeWidth:"1.8",strokeLinecap:"round"},
+              e("path",{d:"M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2"}),
+              e("path",{d:"M12 8v4l2 2"})
+            )
       ),
-      e("div",{style:{fontSize:"12px",color:"rgba(238,240,232,0.5)",fontWeight:"300"}},breathPhase)
+      e("div",{style:{flex:1}},
+        e("div",{style:{fontSize:"12px",color:"rgba(238,240,232,0.6)",fontWeight:"300"}},breathPhase),
+        breathing && e("div",{style:{fontSize:"10px",color:"rgba(238,240,232,0.3)",marginTop:"3px",fontWeight:"300"}},"tap to stop")
+      )
     )
   );
 }
