@@ -90,9 +90,17 @@
       animation: fadeUp 0.25s ease;
     }
     .toast.badge-toast {
-      background: linear-gradient(135deg, #2A3F58, #1E2D40);
-      border: 1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(135deg, #AF8C57, #8a6d3e);
+      border: 1px solid rgba(255,255,255,0.18);
       padding: 24px 28px;
+    }
+    .badge-toast-title {
+      font-size: 15px; font-weight: 600; margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+    .badge-toast-msg {
+      font-size: 13px; font-weight: 300; line-height: 1.6;
+      opacity: 0.92;
     }
 
     .journal-card {
@@ -640,9 +648,10 @@ function App(){
   useEffect(()=>{safeSet(SK.badges,     earnedBadges);},[earnedBadges]);
 
   function notify(msg,isBadge){
-    setToast(msg);setToastClass(isBadge?"badge-toast":"");
+    setToast(isBadge?msg:{text:msg});
+    setToastClass(isBadge?"badge-toast":"");
     clearTimeout(toastTimer.current);
-    toastTimer.current=setTimeout(()=>setToast(null),isBadge?4000:2500);
+    toastTimer.current=setTimeout(()=>setToast(null),isBadge?4500:2500);
   }
 
   function awardBadge(id){
@@ -650,7 +659,7 @@ function App(){
     const def=BADGE_DEFS.find(b=>b.id===id);
     if(!def) return;
     setEarnedBadges(p=>{const n={...p,[id]:true};safeSet(SK.badges,n);return n;});
-    notify(`${def.icon} ${def.label}\n${def.message}`,true);
+    notify({icon:def.icon,title:def.label,message:def.message},true);
   }
 
   const todaySugar   = sugarDays.includes(TODAY);
@@ -747,7 +756,15 @@ function App(){
   const tabs=[{id:"today",label:"Today"},{id:"workout",label:"Workout"},{id:"progress",label:"Progress"},{id:"miles",label:"Miles"}];
 
   return e("div",{style:{minHeight:"100vh",background:"linear-gradient(160deg,#4A5E4A 0%,#526055 50%,#4E5E50 100%)"}},
-    toast&&e("div",{className:`toast ${toastClass}`},toast),
+    toast&&e("div",{className:`toast ${toastClass}`},
+      toastClass==="badge-toast"
+        ? e("div",null,
+            e("div",{style:{fontSize:"24px",marginBottom:"8px"}},toast.icon),
+            e("div",{className:"badge-toast-title"},toast.title),
+            e("div",{className:"badge-toast-msg"},toast.message)
+          )
+        : toast.text
+    ),
 
     e("div",{style:{padding:"48px 24px 0",textAlign:"center"}},
       e("div",{style:{fontSize:"10px",letterSpacing:"4px",color:"#9AA89A",textTransform:"uppercase",marginBottom:"8px",fontWeight:"400"}},"Nikki's Reboot"),
