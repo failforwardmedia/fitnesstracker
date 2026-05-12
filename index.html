@@ -284,9 +284,9 @@ function getDailyAffirmation() {
 // ── Badge definitions ─────────────────────────────────────────────────────────
 const BADGE_DEFS = [
   { id:"first_day",    icon:"🌱", label:"First Day",      message:"Day one is done. That's the one that counts most." },
-  { id:"full_day",     icon:"⭐", label:"Full Day",        message:"All four habits, one day. You showed up completely for yourself." },
-  { id:"3_full_days",  icon:"✨", label:"3 Full Days",     message:"Three complete days. You're building something real here." },
-  { id:"7_full_days",  icon:"🌟", label:"7 Full Days",     message:"A full week of showing up. This is becoming who you are." },
+  { id:"full_day",     icon:"⭐", label:"Perfect Day",     message:"All four habits in one day. You showed up completely for yourself." },
+  { id:"3_full_days",  icon:"✨", label:"3 Strong Days",   message:"Three days with 3 or more habits. You're building something real here." },
+  { id:"7_full_days",  icon:"🌟", label:"7 Strong Days",   message:"Seven strong days. This is becoming who you are." },
   { id:"sugar_7",      icon:"🚫", label:"7 Days No Sugar", message:"Seven days sugar-free. Your body is already thanking you." },
   { id:"sugar_14",     icon:"💪", label:"14 Days No Sugar",message:"Two weeks. That's not willpower — that's a new normal." },
   { id:"sugar_30",     icon:"🏆", label:"30 Days No Sugar",message:"Thirty days. You did what you said you'd do. That's everything." },
@@ -1014,16 +1014,38 @@ function App(){
 
   // ── Badge checks ──────────────────────────────────────────────────────────
   useEffect(()=>{
-    // Full days counter
-    const fullDays = sugarDays.filter(d =>
-      liftSessions.some(s=>s.date===d) &&
-      mindfulDays.includes(d) &&
-      moveDays.includes(d)
-    ).length;
-    if(fullDays>=1) awardBadge("first_day");
-    if(fullDays>=1) awardBadge("full_day");
-    if(fullDays>=3) awardBadge("3_full_days");
-    if(fullDays>=7) awardBadge("7_full_days");
+    // A "strong day" = at least 3 of 4 habits completed on the same day.
+    // Lifting is only 3-4x/week by design, so it's not required every day.
+    // We collect all unique dates across all habit arrays, then count per day.
+    const allDates = [...new Set([
+      ...sugarDays,
+      ...liftSessions.map(s=>s.date),
+      ...mindfulDays,
+      ...moveDays,
+    ])];
+
+    const strongDays = allDates.filter(d=>{
+      const count = [
+        sugarDays.includes(d),
+        liftSessions.some(s=>s.date===d),
+        mindfulDays.includes(d),
+        moveDays.includes(d),
+      ].filter(Boolean).length;
+      return count >= 3;
+    });
+
+    if(strongDays.length>=1) awardBadge("first_day");
+    if(strongDays.length>=3) awardBadge("3_full_days");
+    if(strongDays.length>=7) awardBadge("7_full_days");
+
+    // Perfect day — all 4 habits on the same day
+    const perfectDay = allDates.some(d=>{
+      return sugarDays.includes(d) &&
+             liftSessions.some(s=>s.date===d) &&
+             mindfulDays.includes(d) &&
+             moveDays.includes(d);
+    });
+    if(perfectDay) awardBadge("full_day");
   },[sugarDays,liftSessions,mindfulDays,moveDays]);
 
   useEffect(()=>{
@@ -1040,15 +1062,6 @@ function App(){
     if(totalMiles>=25) awardBadge("miles_25");
     if(totalMiles>=50) awardBadge("miles_50");
   },[totalMiles]);
-
-  // ── Also award first_day / full_day for non-sugar habit combos ───────────
-  useEffect(()=>{
-    const allDays = [...new Set([...liftSessions.map(s=>s.date),...mindfulDays,...moveDays])];
-    const anyFullHabitDay = allDays.some(d=>
-      liftSessions.some(s=>s.date===d) && mindfulDays.includes(d) && moveDays.includes(d)
-    );
-    if(anyFullHabitDay && !earnedBadges["first_day"]) awardBadge("first_day");
-  },[liftSessions,mindfulDays,moveDays]);
 
   function toggleSugar(){
     if(todaySugar){setSugarDays(p=>p.filter(d=>d!==TODAY));notify("Unchecked for today");}
