@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nikki's Reboot" />
+  <title>Nikki's Reboot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; }
+    body { background: #4A5E4A; }
+    #root { min-height: 100%; }
+
+    @keyframes slideDown {
+      from { opacity:0; transform:translateX(-50%) translateY(-10px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .fade-card { animation: fadeUp 0.35s ease both; }
+
+    .tab {
+      background: none; border: none; cursor: pointer;
+      font-family: 'Poppins', sans-serif; font-size: 10px;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 12px 12px; color: #9AA89A;
+      border-bottom: 2px solid transparent; transition: all 0.2s; font-weight: 400;
+    }
+    .tab.active { color: #EEF0E8; border-bottom-color: rgba(238,240,232,0.5); }
+
+    input[type=number], input[type=text], input[type=date] {
+      background: #EAE5DC; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 10px; padding: 11px 14px; color: #1C201A;
+      font-family: 'Poppins', sans-serif; font-size: 14px;
+      width: 100%; outline: none; font-weight: 300;
+    }
+    input:focus { border-color: #3A5070; }
+    input::placeholder { color: #A8AFA0; }
+
+    .navy-btn {
+      background: #1E2D40; color: #fff; border: none; border-radius: 10px;
+      padding: 11px 18px; cursor: pointer; font-family: 'Poppins', sans-serif;
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      transition: background 0.2s; letter-spacing: 0.5px;
+    }
+    .navy-btn:hover { background: #2A3F58; }
+
+    .ghost-btn {
+      background: none; color: #7A8272; border: 1px solid rgba(160,148,128,0.4);
+      border-radius: 99px; padding: 8px 18px; cursor: pointer;
+      font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 400;
+      letter-spacing: 1px; text-transform: uppercase;
+      white-space: nowrap; transition: all 0.2s;
+    }
+    .ghost-btn:hover { background: rgba(30,45,64,0.06); color: #3A4135; }
+
+    .check-row {
+      display: flex; align-items: center; gap: 14px;
+      border-radius: 12px; padding: 14px 16px; width: 100%;
+      cursor: pointer; margin-bottom: 10px; text-align: left;
+      transition: all 0.3s ease; border: 1px solid rgba(160,148,128,0.3);
+    }
+    .check-row.done {
+      background: #1E2D40 !important;
+      border-color: #2A3F58 !important;
+      box-shadow: 0 2px 12px rgba(30,45,64,0.3);
+    }
+    .check-row.undone { background: #EAE5DC; }
+
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: #1E2D40; color: #fff; padding: 11px 26px;
+      border-radius: 40px; font-size: 13px; font-weight: 500;
+      z-index: 999; white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      animation: slideDown 0.2s ease;
+    }
+
+    .journal-card {
+      background: #F0EDE6; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 16px; padding: 20px; margin-bottom: 12px;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-card {
+      background: #F0EDE6; border: 1px solid rgba(160,148,128,0.3);
+      border-radius: 16px; padding: 18px 14px; text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+
+    .section-label {
+      font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+      color: #7A8272; margin-bottom: 14px; font-weight: 500; display: block;
+    }
+
+    /* ── Workout tab specific ── */
+    .day-card {
+      background: #F0EDE6; border-radius: 16px; margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid rgba(160,148,128,0.3);
+    }
+
+    .day-header {
+      background: #1E2D40; color: #EEF0E8;
+      padding: 16px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    .day-title {
+      font-size: 15px; font-weight: 600; letter-spacing: 0.3px;
+    }
+
+    .day-sub {
+      font-size: 10px; opacity: 0.6; letter-spacing: 1.5px;
+      text-transform: uppercase; margin-top: 3px;
+    }
+
+    .day-badge {
+      font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+      background: rgba(255,255,255,0.12); padding: 5px 12px;
+      border-radius: 99px; white-space: nowrap; font-weight: 400;
+    }
+
+    .day-badge.complete {
+      background: #4A5E4A; color: #EEF0E8;
+    }
+
+    .ex-row {
+      display: flex; align-items: center; padding: 13px 18px; gap: 14px;
+      border-bottom: 1px solid rgba(160,148,128,0.15);
+      cursor: pointer; transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ex-row:last-child { border-bottom: none; }
+    .ex-row:active { background: #EAE5DC; }
+    .ex-row.checked { background: #eef4f0; }
+
+    .ex-checkbox {
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid #A8AFA0; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .ex-row.checked .ex-checkbox {
+      background: #4A5E4A; border-color: #4A5E4A;
+    }
+
+    .ex-info { flex: 1; }
+
+    .ex-name {
+      font-size: 13px; font-weight: 500; color: #1C201A; transition: color 0.2s;
+    }
+    .ex-row.checked .ex-name {
+      color: #A8AFA0; text-decoration: line-through;
+      text-decoration-color: #4A5E4A;
+    }
+
+    .ex-sets {
+      font-size: 11px; color: #7A8272; margin-top: 2px; font-weight: 300;
+    }
+
+    .ex-tag {
+      font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 99px;
+      background: #EAE5DC; color: #7A8272; white-space: nowrap; font-weight: 400;
+    }
+    .ex-tag.lower { background: #e8e0d4; color: #8a7a65; }
+
+    .workout-progress-bar {
+      height: 5px; background: rgba(30,45,64,0.1); border-radius: 3px; margin: 16px 0 6px;
+    }
+    .workout-progress-fill {
+      height: 100%; background: #1E2D40; border-radius: 3px; transition: width 0.4s ease;
+    }
+    .workout-progress-label {
+      font-size: 11px; color: #7A8272; font-weight: 300; text-align: right;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const { useState, useEffect, useRef } = React;
+const e = React.createElement;
+
+// ── Storage keys ──────────────────────────────────────────────────────────────
+const SK = {
+  sugar:     "nr_sugar",
+  lifts:     "nr_lifts",
+  mindful:   "nr_mindful",
+  move:      "nr_move",
+  miles:     "nr_miles",
+  sugarStart:"nr_sugarStart",
+  workout:   "nr_workout_v1",
+};
+
+const TODAY = new Date().toISOString().split("T")[0];
+const MAY_END   = new Date("2026-05-31");
+const MAY_START = new Date("2026-05-01");
+
+function getDayOfMay() {
+  const diff = Math.floor((new Date() - MAY_START) / (1000*60*60*24)) + 1;
+  return Math.min(Math.max(diff, 1), 31);
+}
+function getRemainingMayDays() {
+  return Math.max(Math.ceil((MAY_END - new Date()) / (1000*60*60*24)), 0);
+}
+function safeGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+// ── Workout plan data ─────────────────────────────────────────────────────────
+const WORKOUT_DAYS = [
+  {
+    title: "Day 1", sub: "Push + Lower",
+    exercises: [
+      { name:"Dumbbell Chest Press",    sets:"3×10",                         lower:false },
+      { name:"Dumbbell Shoulder Press", sets:"3×10",                         lower:false },
+      { name:"Tricep Pushdown",         sets:"3×12 — cable or band",         lower:false },
+      { name:"Goblet Squat",            sets:"3×10 — slow on the way down",  lower:true  },
+      { name:"Hip Thrust",              sets:"3×12 — barbell or dumbbell",   lower:true  },
+    ]
+  },
+  {
+    title: "Day 2", sub: "Pull + Lower",
+    exercises: [
+      { name:"Lat Pulldown",            sets:"3×10",                         lower:false },
+      { name:"Seated Cable Row",        sets:"3×10",                         lower:false },
+      { name:"Dumbbell Bicep Curl",     sets:"3×12",                         lower:false },
+      { name:"Romanian Deadlift",       sets:"3×10 — hinge, not squat",      lower:true  },
+      { name:"Lateral Band Walk",       sets:"3×15 each direction",          lower:true  },
+    ]
+  },
+  {
+    title: "Day 3", sub: "Full Upper + Core",
+    exercises: [
+      { name:"Incline Dumbbell Press",    sets:"3×10",               lower:false },
+      { name:"Single-Arm Dumbbell Row",   sets:"3×10 each side",     lower:false },
+      { name:"Cable Face Pull",           sets:"3×15",               lower:false },
+      { name:"Lateral Raise",             sets:"3×12",               lower:false },
+      { name:"Reverse Lunge",             sets:"3×8 each leg",       lower:true  },
+      { name:"Plank",                     sets:"3×30 seconds",       lower:false },
+      { name:"Dead Bug",                  sets:"3×8 each side",      lower:false },
+    ]
+  }
+];
+
+const TOTAL_EXERCISES = WORKOUT_DAYS.reduce((s,d) => s + d.exercises.length, 0);
+function exKey(di, ei) { return `d${di}_e${ei}`; }
+
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+function IconNoSugar({ color, size }) {
+  color=color||"#1E2D40"; size=size||22;
+  return e("svg",{width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("rect",{x:"7",y:"8",width:"10",height:"8",rx:"1.5"}),
+    e("line",{x1:"7",y1:"12",x2:"17",y2:"12"}),
+    e("line",{x1:"12",y1:"8",x2:"12",y2:"16"}),
+    e("circle",{cx:"9.5",cy:"10.2",r:"0.6",fill:color,stroke:"none"}),
+    e("circle",{cx:"14.5",cy:"10.2",r:"0.6",fill:color,stroke:"none"}),
+    e("line",{x1:"4",y1:"4",x2:"20",y2:"20",strokeWidth:"2"})
+  );
+}
+function IconLift({ color, size }) {
+  color=color||"#1E2D40"; size=size||22;
+  return e("svg",{width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("line",{x1:"6",y1:"12",x2:"18",y2:"12"}),
+    e("rect",{x:"3",y:"9",width:"3",height:"6",rx:"1"}),
+    e("rect",{x:"18",y:"9",width:"3",height:"6",rx:"1"}),
+    e("line",{x1:"6",y1:"10.5",x2:"6",y2:"13.5",strokeWidth:"2.5"}),
+    e("line",{x1:"18",y1:"10.5",x2:"18",y2:"13.5",strokeWidth:"2.5"})
+  );
+}
+function IconMindfulness({ color, size }) {
+  color=color||"#1E2D40"; size=size||22;
+  return e("svg",{width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:"1.7",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("path",{d:"M12 17 C12 17 9 14 9 11 C9 9 10.5 8 12 8 C13.5 8 15 9 15 11 C15 14 12 17 12 17Z"}),
+    e("path",{d:"M12 17 C12 17 8 15.5 7 12.5 C6.5 10.5 7.5 9 9 9.5"}),
+    e("path",{d:"M12 17 C12 17 16 15.5 17 12.5 C17.5 10.5 16.5 9 15 9.5"}),
+    e("path",{d:"M9 9.5 C7 8.5 5.5 9.5 5.5 11.5 C5.5 13.5 7.5 15 8.5 15.5"}),
+    e("path",{d:"M15 9.5 C17 8.5 18.5 9.5 18.5 11.5 C18.5 13.5 16.5 15 15.5 15.5"}),
+    e("path",{d:"M12 17 C12 18.5 11.5 19.5 11 20"}),
+    e("path",{d:"M12 17 C11 18 9.5 18.5 8.5 18"})
+  );
+}
+function IconMove({ color, size }) {
+  color=color||"#1E2D40"; size=size||22;
+  return e("svg",{width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:"1.7",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("circle",{cx:"12",cy:"4.5",r:"1.8"}),
+    e("line",{x1:"12",y1:"6.3",x2:"12",y2:"12"}),
+    e("path",{d:"M12 8.5 C10 8 7.5 7 6 8.5"}),
+    e("path",{d:"M12 8.5 C14 8 16.5 7 18 8.5"}),
+    e("path",{d:"M12 12 C10.5 13.5 8.5 14.5 7 14"}),
+    e("path",{d:"M12 12 C13.5 13.5 15.5 14.5 17 14"}),
+    e("path",{d:"M7 14 C6.5 15 7 16 8 15.5"}),
+    e("path",{d:"M17 14 C17.5 15 17 16 16 15.5"})
+  );
+}
+function Checkmark({ color }) {
+  return e("svg",{width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:color||"#fff",strokeWidth:"3",strokeLinecap:"round",strokeLinejoin:"round"},
+    e("polyline",{points:"20 6 9 17 4 12"})
+  );
+}
+
+// ── Progress Ring ─────────────────────────────────────────────────────────────
+function ProgressRing({ pct, size, stroke, color, bg, children }) {
+  size=size||80; stroke=stroke||6; color=color||"#1E2D40"; bg=bg||"rgba(30,45,64,0.1)";
+  const r=(size-stroke)/2, circ=2*Math.PI*r, dash=circ*Math.min(pct,1);
+  return e("div",{style:{position:"relative",width:size,height:size}},
+    e("svg",{width:size,height:size,style:{transform:"rotate(-90deg)"}},
+      e("circle",{cx:size/2,cy:size/2,r,fill:"none",stroke:bg,strokeWidth:stroke}),
+      e("circle",{cx:size/2,cy:size/2,r,fill:"none",stroke:color,strokeWidth:stroke,
+        strokeDasharray:`${dash} ${circ}`,strokeLinecap:"round",
+        style:{transition:"stroke-dasharray 0.9s ease"}})
+    ),
+    e("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},children)
+  );
+}
+
+// ── Check Row (habits) ────────────────────────────────────────────────────────
+function CheckRow({ label, sublabel, done, onToggle, Icon }) {
+  return e("button",{onClick:onToggle,className:`check-row ${done?"done":"undone"}`},
+    e("div",{style:{width:"40px",height:"40px",borderRadius:"10px",flexShrink:0,
+      background:done?"rgba(255,255,255,0.12)":"rgba(74,94,74,0.1)",
+      border:`1px solid ${done?"rgba(255,255,255,0.15)":"rgba(74,94,74,0.2)"}`,
+      display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.3s"}},
+      done ? e(Checkmark,{color:"#fff"}) : e(Icon,{color:"#1E2D40",size:20})
+    ),
+    e("div",{style:{flex:1}},
+      e("div",{style:{color:done?"#fff":"#1C201A",fontSize:"15px",fontWeight:"500",transition:"color 0.3s"}},label),
+      sublabel&&e("div",{style:{color:done?"rgba(255,255,255,0.55)":"#7A8272",fontSize:"12px",marginTop:"2px",fontWeight:"300"}},sublabel)
+    ),
+    e("div",{style:{width:"20px",height:"20px",borderRadius:"50%",flexShrink:0,
+      border:`2px solid ${done?"rgba(255,255,255,0.35)":"#A8AFA0"}`,
+      background:done?"rgba(255,255,255,0.15)":"transparent",transition:"all 0.3s"}})
+  );
+}
+
+// ── Workout Tab ───────────────────────────────────────────────────────────────
+function WorkoutTab() {
+  const [checks, setChecks] = useState(() => safeGet(SK.workout, {}));
+
+  useEffect(() => { safeSet(SK.workout, checks); }, [checks]);
+
+  function toggle(di, ei) {
+    const k = exKey(di, ei);
+    setChecks(prev => ({ ...prev, [k]: !prev[k] }));
+  }
+
+  function resetAll() {
+    if (!window.confirm("Reset all checkboxes for the week?")) return;
+    setChecks({});
+  }
+
+  const done = Object.values(checks).filter(Boolean).length;
+  const pct  = TOTAL_EXERCISES > 0 ? (done / TOTAL_EXERCISES) * 100 : 0;
+
+  function isDayDone(di) {
+    return WORKOUT_DAYS[di].exercises.every((_,ei) => checks[exKey(di,ei)]);
+  }
+
+  return e("div",{className:"fade-card"},
+
+    // Week header card
+    e("div",{className:"journal-card"},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"4px"}},
+        e("div",null,
+          e("div",{className:"section-label",style:{marginBottom:"2px"}},"Week 1 · Lifting"),
+          e("div",{style:{fontSize:"12px",color:"#A8AFA0",fontWeight:"300"}},"Weights conservative — feel it, don't be destroyed")
+        )
+      ),
+      e("div",{className:"workout-progress-bar"},
+        e("div",{className:"workout-progress-fill",style:{width:`${pct}%`}})
+      ),
+      e("div",{className:"workout-progress-label"},`${done} of ${TOTAL_EXERCISES} exercises done`),
+      done === TOTAL_EXERCISES && e("div",{style:{textAlign:"center",marginTop:"12px",fontSize:"13px",color:"#4A5E4A",fontWeight:"500"}},"Week complete! 🏆")
+    ),
+
+    // Day cards
+    WORKOUT_DAYS.map((day, di) =>
+      e("div",{key:di,className:"day-card"},
+        e("div",{className:"day-header"},
+          e("div",null,
+            e("div",{className:"day-title"},day.title),
+            e("div",{className:"day-sub"},day.sub)
+          ),
+          e("div",{className:`day-badge${isDayDone(di)?" complete":""}`},
+            isDayDone(di) ? "✓ Done" : `${day.exercises.length} moves`
+          )
+        ),
+        e("div",null,
+          day.exercises.map((ex, ei) => {
+            const checked = !!checks[exKey(di,ei)];
+            return e("div",{
+              key:ei,
+              className:`ex-row${checked?" checked":""}`,
+              onClick:()=>toggle(di,ei)
+            },
+              e("div",{className:"ex-checkbox"},
+                checked && e(Checkmark,{color:"#fff"})
+              ),
+              e("div",{className:"ex-info"},
+                e("div",{className:"ex-name"},ex.name),
+                e("div",{className:"ex-sets"},ex.sets)
+              ),
+              ex.lower && e("span",{className:"ex-tag lower"},"lower")
+            );
+          })
+        )
+      )
+    ),
+
+    // Reset button
+    e("div",{style:{textAlign:"center",marginTop:"8px",paddingBottom:"8px"}},
+      e("button",{className:"ghost-btn",onClick:resetAll},"Reset Week")
+    ),
+
+    e("div",{style:{textAlign:"center",fontSize:"11px",color:"rgba(238,240,232,0.4)",marginTop:"12px",fontWeight:"300",lineHeight:"1.7"}},
+      "Tap any exercise to check it off"
+    )
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App() {
+  const [sugarDays,    setSugarDays]    = useState(() => safeGet(SK.sugar, []));
+  const [liftSessions, setLiftSessions] = useState(() => safeGet(SK.lifts, []));
+  const [mindfulDays,  setMindfulDays]  = useState(() => safeGet(SK.mindful, []));
+  const [moveDays,     setMoveDays]     = useState(() => safeGet(SK.move, []));
+  const [totalMiles,   setTotalMiles]   = useState(() => safeGet(SK.miles, 19.5));
+  const [sugarStart,   setSugarStart]   = useState(() => safeGet(SK.sugarStart, null));
+  const [activeTab,    setActiveTab]    = useState("today");
+  const [milesInput,   setMilesInput]   = useState("");
+  const [showLiftNote, setShowLiftNote] = useState(false);
+  const [liftNote,     setLiftNote]     = useState("");
+  const [toast,        setToast]        = useState(null);
+  const toastTimer = useRef(null);
+
+  useEffect(()=>{ safeSet(SK.sugar,      sugarDays);    },[sugarDays]);
+  useEffect(()=>{ safeSet(SK.lifts,      liftSessions); },[liftSessions]);
+  useEffect(()=>{ safeSet(SK.mindful,    mindfulDays);  },[mindfulDays]);
+  useEffect(()=>{ safeSet(SK.move,       moveDays);     },[moveDays]);
+  useEffect(()=>{ safeSet(SK.miles,      totalMiles);   },[totalMiles]);
+  useEffect(()=>{ safeSet(SK.sugarStart, sugarStart);   },[sugarStart]);
+
+  function notify(msg) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(()=>setToast(null), 2500);
+  }
+
+  const todaySugar   = sugarDays.includes(TODAY);
+  const todayMindful = mindfulDays.includes(TODAY);
+  const todayMove    = moveDays.includes(TODAY);
+  const todayLifted  = liftSessions.some(s=>s.date===TODAY);
+
+  const sugarStreak = sugarStart
+    ? Math.floor((new Date()-new Date(sugarStart))/(1000*60*60*24))+1 : 0;
+
+  const thisWeekLifts = (()=>{
+    const now=new Date(), dow=now.getDay();
+    const ws=new Date(now); ws.setDate(now.getDate()-dow); ws.setHours(0,0,0,0);
+    return liftSessions.filter(s=>new Date(s.date)>=ws).length;
+  })();
+
+  const milesRemaining = Math.max(50-totalMiles,0);
+  const daysLeft       = getRemainingMayDays();
+  const milesPerDay    = daysLeft>0?(milesRemaining/daysLeft).toFixed(1):0;
+  const mayDay         = getDayOfMay();
+  const paceTarget     = (mayDay/31)*50;
+  const onPace         = totalMiles>=paceTarget;
+  const completedToday = [todaySugar,todayLifted,todayMindful,todayMove].filter(Boolean).length;
+
+  function toggleSugar() {
+    if(todaySugar){setSugarDays(p=>p.filter(d=>d!==TODAY));notify("Unchecked for today");}
+    else{setSugarDays(p=>[...p,TODAY]);if(!sugarStart)setSugarStart(TODAY);notify("Sugar-free day logged");}
+  }
+  function logLift() {
+    if(todayLifted){setLiftSessions(p=>p.filter(s=>s.date!==TODAY));notify("Session removed");setShowLiftNote(false);}
+    else{setLiftSessions(p=>[...p,{date:TODAY,note:liftNote}]);setLiftNote("");setShowLiftNote(false);notify("Lift session logged");}
+  }
+  function toggleMindful() {
+    if(todayMindful){setMindfulDays(p=>p.filter(d=>d!==TODAY));notify("Unchecked");}
+    else{setMindfulDays(p=>[...p,TODAY]);notify("Mindfulness session done");}
+  }
+  function toggleMove() {
+    if(todayMove){setMoveDays(p=>p.filter(d=>d!==TODAY));notify("Unchecked");}
+    else{setMoveDays(p=>[...p,TODAY]);notify("Active movement logged");}
+  }
+  function addMiles() {
+    const m=parseFloat(milesInput);
+    if(isNaN(m)||m<=0)return;
+    setTotalMiles(p=>Math.min(parseFloat((p+m).toFixed(2)),50));
+    setMilesInput("");notify(`+${m} miles added`);
+  }
+
+  const dateStr = new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const tabs=[
+    {id:"today",   label:"Today"},
+    {id:"workout", label:"Workout"},
+    {id:"progress",label:"Progress"},
+    {id:"miles",   label:"Miles"},
+  ];
+
+  // Lift note input — stable, defined outside render children
+  function LiftNoteInput() {
+    return e("div",{style:{display:"flex",gap:"8px",marginTop:"-4px",marginBottom:"12px",paddingLeft:"6px"}},
+      e("input",{type:"text",value:liftNote,placeholder:"Note… upper body, legs…",
+        onChange:ev=>setLiftNote(ev.target.value),
+        onKeyDown:ev=>ev.key==="Enter"&&logLift()}),
+      e("button",{className:"navy-btn",onClick:logLift},"Log")
+    );
+  }
+
+  function TodayTab() {
+    return e("div",{className:"fade-card"},
+      e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},"Today's Intentions"),
+        e(CheckRow,{label:"No Sugar",sublabel:sugarStreak>0?`Day ${sugarStreak} of 30`:"Begin your streak today",done:todaySugar,onToggle:toggleSugar,Icon:IconNoSugar}),
+        e(CheckRow,{label:"Lift Session",sublabel:`${thisWeekLifts} of 3–4 sessions this week`,done:todayLifted,onToggle:()=>todayLifted?logLift():setShowLiftNote(s=>!s),Icon:IconLift}),
+        showLiftNote&&!todayLifted&&e(LiftNoteInput),
+        e(CheckRow,{label:"Mindfulness",sublabel:"Calm app · breathe & reset",done:todayMindful,onToggle:toggleMindful,Icon:IconMindfulness}),
+        e(CheckRow,{label:"20 Mins Activity",sublabel:"Walk, yoga, or any movement",done:todayMove,onToggle:toggleMove,Icon:IconMove})
+      ),
+      e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},"50 Miles in May"),
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+          e("div",null,
+            e("div",{style:{fontSize:"36px",fontWeight:"600",color:"#1C201A",lineHeight:"1"}},
+              totalMiles.toFixed(1),
+              e("span",{style:{fontSize:"14px",color:"#7A8272",fontWeight:"300",marginLeft:"4px"}},"mi")
+            ),
+            e("div",{style:{fontSize:"13px",color:onPace?"#4A5E4A":"#8B3A3A",marginTop:"6px",fontWeight:"400"}},
+              onPace?"On pace ✓":`${(paceTarget-totalMiles).toFixed(1)} mi behind pace`
+            ),
+            e("div",{style:{fontSize:"12px",color:"#A8AFA0",marginTop:"3px",fontWeight:"300"}},
+              `${milesRemaining.toFixed(1)} mi remaining · ${daysLeft} days left`)
+          ),
+          e(ProgressRing,{pct:totalMiles/50,size:80,stroke:7,color:"#1E2D40",bg:"rgba(30,45,64,0.08)"},
+            e("div",{style:{fontSize:"14px",fontWeight:"600",color:"#1C201A"}},Math.round((totalMiles/50)*100)+"%")
+          )
+        ),
+        e("div",{style:{marginTop:"14px",height:"5px",background:"rgba(30,45,64,0.1)",borderRadius:"3px"}},
+          e("div",{style:{height:"100%",width:`${(totalMiles/50)*100}%`,background:"#1E2D40",borderRadius:"3px",transition:"width 0.8s ease"}})
+        )
+      )
+    );
+  }
+
+  function ProgressTab() {
+    const stats=[
+      {label:"Sugar-Free Days", value:sugarDays.length,   goal:30,  Icon:IconNoSugar},
+      {label:"Lift Sessions",   value:liftSessions.length,goal:null,Icon:IconLift},
+      {label:"Mindful Sessions",value:mindfulDays.length, goal:null,Icon:IconMindfulness},
+      {label:"Active Movement", value:moveDays.length,    goal:null,Icon:IconMove},
+    ];
+    return e("div",{className:"fade-card"},
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"12px"}},
+        stats.map(({label,value,goal,Icon})=>
+          e("div",{key:label,className:"stat-card"},
+            e("div",{style:{display:"flex",justifyContent:"center",marginBottom:"10px"}},e(Icon,{color:"#1E2D40",size:26})),
+            e("div",{style:{fontSize:"36px",fontWeight:"600",color:"#1C201A",lineHeight:"1"}},value),
+            goal&&e("div",{style:{fontSize:"11px",color:"#A8AFA0",marginTop:"2px"}},`of ${goal}`),
+            e("div",{style:{fontSize:"11px",color:"#7A8272",marginTop:"6px",lineHeight:"1.4"}},label)
+          )
+        )
+      ),
+      e("div",{className:"journal-card"},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}},
+          e("span",{style:{fontSize:"14px",color:"#3A4135",fontWeight:"500"}},"30-Day No Sugar"),
+          e("span",{style:{fontSize:"14px",color:"#1E2D40",fontWeight:"600"}},`${sugarStreak} / 30`)
+        ),
+        e("div",{style:{height:"6px",background:"rgba(30,45,64,0.1)",borderRadius:"3px"}},
+          e("div",{style:{height:"100%",width:`${Math.min((sugarStreak/30)*100,100)}%`,
+            background:"linear-gradient(90deg,#1E2D40,#3A5070)",borderRadius:"3px",transition:"width 0.9s ease"}})
+        ),
+        sugarStreak>=30&&e("div",{style:{textAlign:"center",marginTop:"12px",color:"#1E2D40",fontWeight:"500"}},"30 days complete!"),
+        sugarStreak>0&&sugarStreak<30&&e("div",{style:{fontSize:"12px",color:"#A8AFA0",marginTop:"8px",textAlign:"right",fontWeight:"300"}},`${30-sugarStreak} days to go`)
+      ),
+      e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},"This Week · Lifting"),
+        e("div",{style:{display:"flex",gap:"6px"}},
+          ["S","M","T","W","T","F","S"].map((d,i)=>{
+            const now=new Date(),dow=now.getDay();
+            const ws=new Date(now); ws.setDate(now.getDate()-dow); ws.setHours(0,0,0,0);
+            const dd=new Date(ws); dd.setDate(ws.getDate()+i);
+            const ds=dd.toISOString().split("T")[0];
+            const has=liftSessions.some(s=>s.date===ds);
+            const isToday=i===dow;
+            return e("div",{key:i,style:{flex:1,textAlign:"center"}},
+              e("div",{style:{fontSize:"10px",color:isToday?"#1E2D40":"#A8AFA0",marginBottom:"6px",fontWeight:isToday?"600":"300"}},d),
+              e("div",{style:{height:"32px",borderRadius:"6px",
+                background:has?"#1E2D40":isToday?"rgba(30,45,64,0.1)":"rgba(30,45,64,0.05)",
+                display:"flex",alignItems:"center",justifyContent:"center"}},
+                has&&e(Checkmark,{color:"#fff"})
+              )
+            );
+          })
+        ),
+        e("div",{style:{fontSize:"12px",color:"#A8AFA0",marginTop:"10px",textAlign:"right",fontWeight:"300"}},`${thisWeekLifts} of 3–4 sessions this week`)
+      ),
+      liftSessions.length>0&&e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},"Lift History"),
+        [...liftSessions].reverse().slice(0,10).map((s,i)=>
+          e("div",{key:i,style:{display:"flex",justifyContent:"space-between",padding:"9px 0",
+            borderBottom:"1px solid rgba(160,148,128,0.3)",fontSize:"13px"}},
+            e("span",{style:{color:"#3A4135",fontWeight:"400"}},
+              new Date(s.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})),
+            e("span",{style:{color:"#7A8272",fontWeight:"300"}},s.note||"Session")
+          )
+        )
+      )
+    );
+  }
+
+  function MilesTab() {
+    return e("div",{className:"fade-card"},
+      e("div",{className:"journal-card",style:{textAlign:"center",padding:"32px 24px"}},
+        e("span",{className:"section-label"},"50 Miles in May"),
+        e("div",{style:{display:"flex",justifyContent:"center",marginBottom:"24px"}},
+          e(ProgressRing,{pct:totalMiles/50,size:160,stroke:12,color:"#1E2D40",bg:"rgba(30,45,64,0.08)"},
+            e("div",{style:{fontSize:"44px",fontWeight:"600",color:"#1C201A",lineHeight:"1"}},totalMiles.toFixed(1)),
+            e("div",{style:{fontSize:"12px",color:"#7A8272",marginTop:"4px",fontWeight:"300"}},"of 50 miles")
+          )
+        ),
+        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px",marginBottom:"20px"}},
+          [{val:milesRemaining.toFixed(1),label:"miles left"},{val:daysLeft,label:"days left"},{val:`${milesPerDay}/day`,label:"needed"}]
+          .map(({val,label})=>
+            e("div",{key:label,style:{background:"#EAE5DC",borderRadius:"10px",padding:"12px 8px",border:"1px solid rgba(160,148,128,0.3)"}},
+              e("div",{style:{fontSize:"18px",fontWeight:"600",color:"#1C201A"}},val),
+              e("div",{style:{fontSize:"11px",color:"#A8AFA0",marginTop:"3px",fontWeight:"300"}},label)
+            )
+          )
+        ),
+        e("div",{style:{fontSize:"13px",color:onPace?"#4A5E4A":"#8B3A3A",fontWeight:"400"}},
+          onPace?"You're on pace — keep it up ✓":`${(paceTarget-totalMiles).toFixed(1)} mi behind today's target`
+        ),
+        milesRemaining===0&&e("div",{style:{marginTop:"14px",fontSize:"15px",color:"#1E2D40",fontWeight:"500"}},"Challenge complete!")
+      ),
+      e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},"Log Miles"),
+        e("div",{style:{display:"flex",gap:"10px"}},
+          e("input",{type:"number",step:"0.1",min:"0.1",value:milesInput,
+            onChange:ev=>setMilesInput(ev.target.value),
+            onKeyDown:ev=>ev.key==="Enter"&&addMiles(),
+            placeholder:"e.g. 2.5"}),
+          e("button",{className:"navy-btn",onClick:addMiles},"Add")
+        )
+      ),
+      e("div",{className:"journal-card"},
+        e("span",{className:"section-label"},`Pace · Day ${mayDay} of 31`),
+        [{label:"Your miles",val:totalMiles,color:"#1E2D40"},{label:"Target pace",val:paceTarget,color:"rgba(30,45,64,0.2)"}]
+        .map(({label,val,color})=>
+          e("div",{key:label,style:{display:"flex",alignItems:"center",gap:"10px",marginBottom:"10px"}},
+            e("span",{style:{fontSize:"12px",color:"#7A8272",minWidth:"76px",fontWeight:"300"}},label),
+            e("div",{style:{flex:1,height:"6px",background:"rgba(30,45,64,0.08)",borderRadius:"3px"}},
+              e("div",{style:{height:"100%",width:`${Math.min((val/50)*100,100)}%`,background:color,borderRadius:"3px",transition:"width 0.7s ease"}})
+            ),
+            e("span",{style:{fontSize:"12px",color:"#3A4135",minWidth:"34px",textAlign:"right",fontWeight:"400"}},val.toFixed(1))
+          )
+        )
+      )
+    );
+  }
+
+  return e("div",{style:{minHeight:"100vh",background:"linear-gradient(160deg, #4A5E4A 0%, #526055 50%, #4E5E50 100%)"}},
+    toast&&e("div",{className:"toast"},toast),
+
+    e("div",{style:{padding:"48px 24px 0",textAlign:"center"}},
+      e("div",{style:{fontSize:"10px",letterSpacing:"4px",color:"#9AA89A",textTransform:"uppercase",marginBottom:"8px",fontWeight:"400"}},"Nikki's Reboot"),
+      e("div",{style:{fontSize:"28px",color:"#EEF0E8",letterSpacing:"0.5px",marginBottom:"4px",fontWeight:"600"}},"Wellness Tracker"),
+      e("div",{style:{fontSize:"12px",color:"#9AA89A",marginBottom:"30px",fontWeight:"300"}},dateStr),
+      e("div",{style:{display:"flex",justifyContent:"center",marginBottom:"30px"}},
+        e("div",{style:{background:"#F0EDE6",borderRadius:"50%",width:"118px",height:"118px",
+          display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.2)"}},
+          e(ProgressRing,{pct:completedToday/4,size:118,stroke:9,color:"#1E2D40",bg:"rgba(30,45,64,0.08)"},
+            e("div",{style:{fontSize:"30px",fontWeight:"600",color:"#1C201A"}},completedToday),
+            e("div",{style:{fontSize:"10px",color:"#7A8272",letterSpacing:"1px",marginTop:"1px",fontWeight:"400"}},"of 4 today")
+          )
+        )
+      )
+    ),
+
+    e("div",{style:{display:"flex",justifyContent:"center",borderBottom:"1px solid rgba(255,255,255,0.1)",marginBottom:"20px"}},
+      tabs.map(t=>e("button",{key:t.id,className:`tab ${activeTab===t.id?"active":""}`,onClick:()=>setActiveTab(t.id)},t.label))
+    ),
+
+    e("div",{style:{padding:"0 16px 56px",maxWidth:"460px",margin:"0 auto"}},
+      activeTab==="today"    && e(TodayTab),
+      activeTab==="workout"  && e(WorkoutTab),
+      activeTab==="progress" && e(ProgressTab),
+      activeTab==="miles"    && e(MilesTab)
+    )
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
