@@ -1130,13 +1130,7 @@ function MilesTab({totalMiles,milesRemaining,milesInput,setMilesInput,addMiles,m
           e("div",{style:{fontSize:"12px",color:"#7A8272",marginTop:"4px",fontWeight:"300"}},"miles logged")
         )
       ),
-      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"12px"}},
-        [{val:milesLog.length,label:"entries logged"},{val:milesLog.reduce((s,e)=>s+(e.miles||0),0).toFixed(1)+" mi",label:"total distance"}]
-        .map(({val,label})=>e("div",{key:label,style:{background:"#EAE5DC",borderRadius:"10px",padding:"12px 8px",border:"1px solid rgba(160,148,128,0.3)"}},
-          e("div",{style:{fontSize:"18px",fontWeight:"600",color:"#1C201A"}},val),
-          e("div",{style:{fontSize:"11px",color:"#A8AFA0",marginTop:"3px",fontWeight:"300"}},label)
-        ))
-      ),
+
       totalMiles>=50&&e("div",{style:{fontSize:"13px",color:"#4A5E4A",fontWeight:"500",marginTop:"4px"}},"May challenge complete! Keep going 🏃")
     ),
     e("div",{className:"journal-card"},
