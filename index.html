@@ -262,13 +262,14 @@ const TODAY = getLocalToday();
   // ── Workout Week 1 Day 1 complete ─────────────────────────────────────────
   localStorage.setItem("nr_workout_v1", JSON.stringify({w0_d0_e0:true,w0_d0_e1:true,w0_d0_e2:true,w0_d0_e3:true,w0_d0_e4:true}));
 
-  // ── Weekly journal ────────────────────────────────────────────────────────
-  const journal = {
-    "week_2026_05_17": {
+  // ── Journal — array format ────────────────────────────────────────────────
+  const journal = [
+    {
+      id:"1747526400000",
       text:"This week felt great although the Beer Fest took a toll on my body. It feels good to be back on track. I need to get back to lymphatic drainage sessions.",
-      savedAt:"May 17, 2026"
+      savedAt:"Sat, May 17, 2026 · 12:00 PM"
     }
-  };
+  ];
   localStorage.setItem("nr_journal", JSON.stringify(journal));
 
   // ── Earned badges ─────────────────────────────────────────────────────────
@@ -948,42 +949,46 @@ function StreakCalendar({sugarDays,liftSessions,mindfulDays,moveDays}){
 
 // ── Weekly Journal ────────────────────────────────────────────────────────────
 function WeeklyJournal({journal,setJournal}){
-  const now = new Date();
-  const dow  = now.getDay();
-  const weekStart = new Date(now); weekStart.setDate(now.getDate()-dow); weekStart.setHours(0,0,0,0);
-  const yr = weekStart.getFullYear();
-  const mo = String(weekStart.getMonth()+1).padStart(2,"0");
-  const dy = String(weekStart.getDate()).padStart(2,"0");
-  const weekKey = `week_${yr}_${mo}_${dy}`;
+  const [draft, setDraft] = useState("");
+  const [saved, setSaved] = useState(false);
 
-  const existing = journal[weekKey];
-  const current = existing ? (typeof existing === "string" ? existing : existing.text) : "";
-  const [draft, setDraft] = useState(current);  // eslint-disable-line
-  const [saved, setSaved]  = useState(false);
+  // journal is now an array of entries: [{text, savedAt, id}]
+  // Support migration from old object format
+  const entries = Array.isArray(journal)
+    ? journal
+    : Object.values(journal).map(v =>
+        typeof v === "string"
+          ? {text:v, savedAt:"", id:Math.random().toString(36).slice(2)}
+          : {text:v.text, savedAt:v.savedAt||"", id:Math.random().toString(36).slice(2)}
+      );
+
+  // Sort newest first
+  const sorted = [...entries].reverse();
 
   function save(){
     if(!draft.trim()) return;
-    const entry = { text: draft, savedAt: new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) };
-    setJournal(p=>({...p,[weekKey]:entry}));
+    const now = new Date();
+    const savedAt = now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"}) +
+      " · " + now.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+    const entry = { text:draft.trim(), savedAt, id: Date.now().toString() };
+    const updated = Array.isArray(journal) ? [...journal, entry] : [entry];
+    setJournal(updated);
+    setDraft("");
     setSaved(true);
     setTimeout(()=>setSaved(false),2000);
   }
 
-  const pastEntries = Object.entries(journal)
-    .filter(([k])=>k!==weekKey&&k.startsWith("week_"))
-    .sort((a,b)=>b[0].localeCompare(a[0]))
-    .slice(0,4);
-
-  function weekLabel(key){
-    const parts = key.replace("week_","").split("_");
-    const d = new Date(Number(parts[0]),Number(parts[1])-1,Number(parts[2]));
-    const end = new Date(d); end.setDate(d.getDate()+6);
-    return `Week of ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${end.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+  function deleteEntry(id){
+    if(!window.confirm("Delete this entry?")) return;
+    const updated = entries.filter(e=>e.id!==id);
+    setJournal(updated);
   }
 
   return e("div",{className:"journal-card"},
-    e("span",{className:"section-label"},"Weekly Check-In"),
-    e("div",{style:{fontSize:"12px",color:"#7A8272",fontWeight:"300",marginBottom:"12px",lineHeight:"1.5"}},"How did this week feel? What was hard? What worked?"),
+    e("span",{className:"section-label"},"Journal"),
+    e("div",{style:{fontSize:"12px",color:"#7A8272",fontWeight:"300",marginBottom:"12px",lineHeight:"1.5"}},
+      "Any time, any thought. Each entry saves with a timestamp."
+    ),
     e("textarea",{
       value:draft,
       onChange:ev=>setDraft(ev.target.value),
@@ -992,22 +997,33 @@ function WeeklyJournal({journal,setJournal}){
         width:"100%",minHeight:"90px",background:"#EAE5DC",
         border:"1px solid rgba(160,148,128,0.3)",borderRadius:"10px",
         padding:"11px 14px",color:"#1C201A",fontFamily:"'Poppins',sans-serif",
-        fontSize:"13px",fontWeight:"300",outline:"none",resize:"vertical",
-        lineHeight:"1.6",
+        fontSize:"13px",fontWeight:"300",outline:"none",resize:"vertical",lineHeight:"1.6",
       }
     }),
     e("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:"8px"}},
       e("button",{className:"navy-btn",onClick:save,style:{padding:"9px 20px",fontSize:"12px"}},
-        saved?"Saved ✓":"Save Note"
+        saved ? "Saved ✓" : "Save Entry"
       )
     ),
-    pastEntries.length>0&&e("div",{style:{marginTop:"16px",paddingTop:"14px",borderTop:"1px solid rgba(160,148,128,0.2)"}},
-      e("div",{style:{fontSize:"10px",letterSpacing:"2px",textTransform:"uppercase",color:"#A8AFA0",marginBottom:"10px",fontWeight:"500"}},"Past Entries"),
-      pastEntries.map(([k,v])=>
-        e("div",{key:k,style:{marginBottom:"10px"}},
-          e("div",{style:{fontSize:"11px",color:"#AF8C57",fontWeight:"500",marginBottom:"3px"}},weekLabel(k)),
-          e("div",{style:{fontSize:"12px",color:"#7A8272",fontWeight:"300",lineHeight:"1.5",fontStyle:"italic"}},
-            (() => { const t = typeof v==="string"?v:v.text; return t.length>120?t.slice(0,120)+"…":t; })()
+    sorted.length>0&&e("div",{style:{marginTop:"16px",paddingTop:"14px",borderTop:"1px solid rgba(160,148,128,0.2)"}},
+      e("div",{style:{fontSize:"10px",letterSpacing:"2px",textTransform:"uppercase",color:"#A8AFA0",marginBottom:"12px",fontWeight:"500"}},
+        `${sorted.length} ${sorted.length===1?"Entry":"Entries"}`
+      ),
+      sorted.map((entry)=>
+        e("div",{key:entry.id,style:{
+          marginBottom:"14px",paddingBottom:"14px",
+          borderBottom:"1px solid rgba(160,148,128,0.15)",
+        }},
+          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"6px"}},
+            e("div",{style:{fontSize:"11px",color:"#AF8C57",fontWeight:"500"}}),entry.savedAt&&
+            e("div",{style:{fontSize:"11px",color:"#AF8C57",fontWeight:"500"}},entry.savedAt),
+            e("button",{
+              onClick:()=>deleteEntry(entry.id),
+              style:{background:"none",border:"none",cursor:"pointer",color:"#C8B8A2",fontSize:"14px",padding:"0",lineHeight:"1",flexShrink:0,marginLeft:"8px"}
+            },"×")
+          ),
+          e("div",{style:{fontSize:"13px",color:"#3A4135",fontWeight:"300",lineHeight:"1.7",fontStyle:"italic"}},
+            entry.text
           )
         )
       )
@@ -1152,7 +1168,7 @@ function App(){
   const [milesLog,     setMilesLog]     = useState(()=>safeGet(SK.milesLog,[]));
   const [sugarStart,   setSugarStart]   = useState(()=>safeGet(SK.sugarStart,null));
   const [earnedBadges, setEarnedBadges] = useState(()=>safeGet(SK.badges,{}));
-  const [journal,      setJournal]      = useState(()=>safeGet(SK.journal,{}));
+  const [journal,      setJournal]      = useState(()=>safeGet(SK.journal,[]));
   const [activeTab,    setActiveTab]    = useState("today");
   const [milesInput,   setMilesInput]   = useState("");
   const [showLiftNote, setShowLiftNote] = useState(false);
